@@ -1,0 +1,9 @@
+{
+  "network-configs": {
+    "lab-network": {
+      "name": "lab-ehr-network",
+      "profile": "./connection-profile/lab-explorer.json"
+    }
+  },
+  "license": "Apache-2.0"
+}

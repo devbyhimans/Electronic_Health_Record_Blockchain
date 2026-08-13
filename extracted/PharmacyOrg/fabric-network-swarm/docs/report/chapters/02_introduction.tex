@@ -1,0 +1,54 @@
+\chapter{Introduction}
+
+\section{Background}
+Healthcare systems worldwide rely heavily on centralized databases for storing and managing Electronic Health Records (EHR). While centralized systems offer simplicity in deployment, they introduce critical vulnerabilities including single points of failure, data tampering risks, and fragmented patient data across institutions. Patients have limited control over who accesses their sensitive medical information, and interoperability between hospitals remains a persistent challenge.
+
+\section{Problem Statement}
+
+The current landscape of healthcare data management suffers from the following fundamental challenges:
+
+\begin{enumerate}
+    \item \textbf{Data Fragmentation:} Patient records are scattered across multiple hospital databases with no unified access mechanism. Transferring records between institutions requires manual, error-prone processes.
+    
+    \item \textbf{Privacy and Ownership:} Patients lack sovereign control over their own medical data. Unauthorized access to sensitive diagnoses is difficult to prevent and audit in traditional relational database systems.
+    
+    \item \textbf{Data Integrity:} Centralized databases are susceptible to unauthorized modification. Medical records can be altered or deleted without an immutable audit trail, compromising trust between healthcare providers.
+    
+    \item \textbf{Supply Chain Opacity:} Pharmaceutical inventory tracking in hospitals lacks transparency, enabling potential fraud through ghost prescriptions or unaccounted medicine dispensation.
+    
+    \item \textbf{Scalability of Trust:} As healthcare networks grow across geographic boundaries, establishing mutual trust between disparate entities using traditional certificate-based or password-based authentication becomes increasingly complex.
+\end{enumerate}
+
+\section{Proposed Solution}
+
+The Electronic Health Record (EHR) system addresses these challenges by implementing a \textbf{permissioned blockchain-based} EHR platform using \textbf{Hyperledger Fabric v2.5}. Unlike public blockchains (e.g., Ethereum), Hyperledger Fabric provides enterprise-grade features including:
+
+\begin{itemize}
+    \item \textbf{Permissioned Access:} Only authorized entities with valid X.509 certificates can participate in the network.
+    \item \textbf{Channel-based Privacy:} Data is isolated within channels, preventing unauthorized cross-organizational data leakage.
+    \item \textbf{Pluggable Consensus:} The Raft consensus mechanism provides crash fault tolerance without the computational overhead of Proof-of-Work.
+    \item \textbf{Rich Queries:} CouchDB integration enables complex JSON-based queries on the world state for efficient data retrieval.
+\end{itemize}
+
+The system is deployed across a \textbf{three-node Docker Swarm cluster} connected via a \textbf{Tailscale VPN mesh}, demonstrating true decentralization across geographically separated physical machines. An \textbf{IPFS} layer provides off-chain storage for heavy medical documents, keeping the blockchain lightweight while maintaining content-addressed integrity.
+
+\section{Objectives}
+
+The primary objectives of the Electronic Health Record (EHR) project are:
+
+\begin{enumerate}
+    \item Design and deploy a multi-node Hyperledger Fabric network across physically distributed machines using Docker Swarm orchestration.
+    \item Develop smart contracts (chaincode) that enforce immutable rules for patient registration, prescription management, access control, and inventory tracking.
+    \item Build role-based frontend portals (Manager, Patient, Pharmacist, Inventory) with cryptographic identity-driven access control.
+    \item Integrate IPFS for decentralized off-chain storage of medical documents with on-chain hash anchoring.
+    \item Automate the entire deployment lifecycle through shell scripts for reproducible, one-click network bootstrapping.
+\end{enumerate}
+
+\section{Organization of the Report}
+
+The remainder of this report is organized as follows:
+    \item \textbf{Chapter 2:} Reviews related work in blockchain-based healthcare systems.
+    \item \textbf{Chapter 3:} Presents the overall system architecture, including network topology, consensus, and communication infrastructure.
+    \item \textbf{Chapter 4:} Details the implementation methodology and individual contributions of each team member, including pseudo code, walkthrough screenshots, and technical deep-dives.
+    \item \textbf{Chapter 5:} Concludes the report with a summary of achievements and future research directions.
+\end{itemize}

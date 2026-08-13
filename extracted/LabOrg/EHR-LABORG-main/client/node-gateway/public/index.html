@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="A premium interface for managing lab records securely on the ehrchannel using Hyperledger Fabric LabMSP." />
+    <title>Lab Results Control Deck</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="shell">
+      <header class="hero reveal" style="--delay: 50ms">
+        <p class="eyebrow">Hyperledger Fabric &middot; LabMSP</p>
+        <h1>Lab Results Control Deck</h1>
+        <p class="subtitle">
+          Securely create, track, and inspect patient laboratory records directly on the ehrchannel with your gateway identity.
+        </p>
+
+        <div class="hero-controls">
+          <label for="peerSelect">Gateway Peer</label>
+          <select id="peerSelect" aria-label="Select Gateway Peer"></select>
+          <button id="refreshBtn" class="btn btn-secondary" type="button">Refresh Ledger</button>
+        </div>
+      </header>
+
+      <div class="sidebar">
+        <article class="panel reveal" style="--delay: 150ms">
+          <h2>
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 4v16m8-8H4"></path></svg>
+            Create Record
+          </h2>
+          <form id="createForm" class="form-grid">
+            <label>
+              Result ID
+              <input name="resultId" placeholder="e.g. labresult10" required />
+            </label>
+            <label>
+              Patient ID
+              <input name="patientId" placeholder="e.g. patient-1010" required />
+            </label>
+            <label>
+              Test Code
+              <input name="testCode" placeholder="e.g. LIPID" required />
+            </label>
+            <label>
+              Collected At
+              <input name="collectedAt" type="datetime-local" required />
+            </label>
+            <label>
+              Initial Status
+              <input name="status" placeholder="e.g. PENDING or REPORTED" required />
+            </label>
+            <label>
+              Result Data (JSON, optional with file upload)
+              <textarea name="resultData" placeholder='{"hdl":"56","ldl":"108"}'></textarea>
+            </label>
+            <label>
+              Lab Report File (PDF/Image)
+              <input
+                id="reportFile"
+                name="reportFile"
+                type="file"
+                accept="application/pdf,image/*"
+              />
+              <span style="font-size: 0.75rem; color: var(--text-muted); font-weight: 500;">
+                Upload a PDF/image report to store in IPFS and extract text for AI analysis.
+              </span>
+            </label>
+            <label class="checkbox-row">
+              <input id="storeInIpfs" name="storeInIpfs" type="checkbox" checked />
+              Store result payload in IPFS (CID anchored on-chain)
+            </label>
+            <label class="checkbox-row">
+              <input id="runAiAgents" name="runAiAgents" type="checkbox" checked />
+              Run Gemini AI agents (lab analysis + decision support) before submit
+            </label>
+            <button class="btn btn-primary" type="submit">Submit Record</button>
+          </form>
+        </article>
+
+        <article class="panel reveal" style="--delay: 200ms">
+          <h2>
+            <svg width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            Query Tools
+          </h2>
+          <form id="readForm" class="inline-form">
+            <label>
+              Read by Result ID
+              <input name="resultId" placeholder="labresult1" required />
+            </label>
+            <button class="btn btn-secondary" type="submit">Lookup</button>
+          </form>
+
+          <form id="resolveDataForm" class="inline-form">
+            <label>
+              Resolve IPFS Data by Result ID
+              <input name="resultId" placeholder="labresult1" required />
+            </label>
+            <button class="btn btn-secondary" type="submit">Resolve Payload</button>
+          </form>
+
+          <form id="patientForm" class="inline-form">
+            <label>
+              History by Patient ID
+              <input name="patientId" placeholder="patient-1001" required />
+            </label>
+            <button class="btn btn-secondary" type="submit">Lookup</button>
+          </form>
+
+          <form id="updateStatusForm" class="inline-form">
+            <label>
+              Update Result State
+              <input name="resultId" placeholder="Result ID" required />
+            </label>
+            <label>
+              New Status
+              <input name="status" placeholder="REPORTED" required />
+            </label>
+            <button class="btn btn-secondary" type="submit" style="grid-column: 1 / -1;">Update Status</button>
+          </form>
+        </article>
+      </div>
+
+      <div class="main-content">
+        <section class="panel reveal" style="--delay: 250ms">
+          <div class="panel-header">
+            <h2>Ledger Snapshot</h2>
+            <p id="metaPill" class="pill">Connecting...</p>
+          </div>
+
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Result ID</th>
+                  <th>Patient ID</th>
+                  <th>Test Code</th>
+                  <th>Status</th>
+                  <th>Collected At</th>
+                </tr>
+              </thead>
+              <tbody id="recordsBody">
+                <tr><td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">Loading ledger data...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section class="panel panel-output reveal" style="--delay: 300ms">
+          <div class="panel-header">
+            <h2>Transaction Output</h2>
+            <button id="clearOutputBtn" class="btn btn-ghost btn-sm" type="button">Clear Logs</button>
+          </div>
+          <pre id="rawOutput" aria-live="polite">Awaiting transactions...</pre>
+        </section>
+      </div>
+    </main>
+
+    <div id="toast" role="status" aria-live="polite"></div>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>

@@ -1,0 +1,36 @@
+{
+  "patients": {
+    "PAT-TEST-1774177935": {
+      "patientId": "PAT-TEST-1774177935",
+      "passwordHash": "$2a$10$DsovmBHZ9Zu6RbA.TdloheIJAz9WVM5980Vx2U5pWmKMQTGndmMNe",
+      "email": "patient@test.com",
+      "phone": "9876543210",
+      "createdAt": "2026-03-22T11:13:20.208Z",
+      "updatedAt": "2026-03-22T11:13:20.609Z"
+    },
+    "PAT-WRONG-1774178007": {
+      "patientId": "PAT-WRONG-1774178007",
+      "passwordHash": "$2a$10$jx0jfB7PPgdwgnCNbDPfTeEtNijPHo9HyRBvVaifVe5tcxWrx0/Gi",
+      "email": "",
+      "phone": "",
+      "createdAt": "2026-03-22T11:13:27.434Z",
+      "updatedAt": "2026-03-22T11:13:27.434Z"
+    },
+    "PAT-TEST-1774178527": {
+      "patientId": "PAT-TEST-1774178527",
+      "passwordHash": "$2a$10$gdjemv.5cGTZMB9yz3OLF.SZsMc6LzNs00Oh9aJlUYX4JjWs/pIFO",
+      "email": "patient@test.com",
+      "phone": "9876543210",
+      "createdAt": "2026-03-22T11:23:11.499Z",
+      "updatedAt": "2026-03-22T11:23:11.899Z"
+    },
+    "PAT-WRONG-1774178598": {
+      "patientId": "PAT-WRONG-1774178598",
+      "passwordHash": "$2a$10$lV/xVQLGVN.KfAyi8/CHEeQdpAIRissEqJDkIrMsL/VyPfzuJKzuO",
+      "email": "",
+      "phone": "",
+      "createdAt": "2026-03-22T11:23:18.708Z",
+      "updatedAt": "2026-03-22T11:23:18.708Z"
+    }
+  }
+}

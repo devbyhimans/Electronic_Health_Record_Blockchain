@@ -1,0 +1,74 @@
+\documentclass[12pt,a4paper]{report}
+\usepackage[utf8]{inputenc}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{algorithm}
+\usepackage{algpseudocode}
+\usepackage{subcaption}
+\usepackage[english]{babel}
+\usepackage[export]{adjustbox}
+\usepackage{enumerate}
+\usepackage[left=3.5cm,right=2.5cm,top=2.5cm,bottom=2.5cm]{geometry}
+\usepackage{lineno}
+\usepackage{cite}
+\usepackage{acronym}
+\usepackage{url}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{hyperref}
+\usepackage{fancyhdr}
+\usepackage{tikz}
+\usepackage{pdflscape}
+\usetikzlibrary{shapes, arrows.meta, positioning, calc, fit, backgrounds, matrices}
+
+\renewcommand{\baselinestretch}{1.5}
+
+% Code listing style
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    commentstyle=\color{gray},
+    keywordstyle=\color{blue},
+    stringstyle=\color{red!70!black},
+    frame=single,
+    backgroundcolor=\color{gray!5},
+    tabsize=2,
+    numbers=left,
+    numberstyle=\tiny\color{gray},
+    captionpos=b
+}
+
+% Header/Footer
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small EHR: Pharmacy Org}
+\fancyhead[R]{\small \leftmark}
+\fancyfoot[C]{\thepage}
+
+\begin{document}
+
+% ── Title Page ────────────────────────────────────────────────────────────────
+\input{chapters/00_titlepage}
+
+% ── Front Matter ──────────────────────────────────────────────────────────────
+\pagenumbering{roman}
+\tableofcontents
+\listoffigures
+\listoftables
+\newpage
+
+% ── Main Content ──────────────────────────────────────────────────────────────
+\pagenumbering{arabic}
+
+\input{chapters/01_abstract}
+\input{chapters/02_introduction}
+\input{chapters/03_related_work}
+\input{chapters/04_architecture}
+\input{chapters/05_implementation}
+\input{chapters/06_conclusion}
+\input{chapters/07_references}
+
+\end{document}

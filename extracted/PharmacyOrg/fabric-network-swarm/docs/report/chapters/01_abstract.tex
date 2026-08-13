@@ -1,0 +1,12 @@
+\chapter*{Abstract}
+\addcontentsline{toc}{chapter}{Abstract}
+
+Modern healthcare systems suffer from centralized and fragmented data management, leading to critical challenges in data privacy, interoperability, and patient empowerment. The \textbf{Electronic Health Record (EHR) System} is an enterprise-grade, decentralized platform built upon \textbf{Hyperledger Fabric v2.5} and orchestrated across a multi-node \textbf{Docker Swarm} cluster, specifically tailored for pharmacy organization workflows. The system employs a permissioned blockchain to guarantee data immutability, cryptographic identity management via X.509 certificates, and granular Attribute-Based Access Control (ABAC) to regulate data visibility across Managers, Pharmacists, and Patients.
+
+The platform is deployed across three geographically distributed physical machines interconnected through a \textbf{Tailscale VPN} mesh, forming a secure overlay network. The architecture features a Raft-based Ordering Service for consensus, CouchDB-backed rich queries for high-performance state lookups, and IPFS integration for off-chain storage of heavy medical documents. A Node.js API Gateway bridges the React-based frontend portals to the blockchain network using the official \texttt{fabric-network} SDK, translating REST requests into cryptographically signed gRPC transactions.
+
+The system comprises four role-based portals: a \textbf{Manager Portal} for governance and identity provisioning, a \textbf{Patient Portal} for self-sovereign health record access, a \textbf{Pharmacist Portal} for prescription fulfillment with privacy-preserving data filtering, and an \textbf{Inventory Portal} for immutable medicine supply chain tracking. The project demonstrates a fully functional, production-ready decentralized healthcare infrastructure with automated one-click deployment, fault-tolerant peer redundancy, and real-time ledger synchronization via the Gossip protocol.
+
+\vspace{1em}
+\noindent\textbf{Keywords:} Hyperledger Fabric, Docker Swarm, Electronic Health Records, Blockchain, IPFS, ABAC, CouchDB, Decentralized Application.
+\newpage

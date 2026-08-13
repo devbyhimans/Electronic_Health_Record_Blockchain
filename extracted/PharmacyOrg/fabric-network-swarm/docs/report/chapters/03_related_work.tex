@@ -1,0 +1,50 @@
+\chapter{Related Work}
+
+The application of blockchain technology to healthcare data management has received significant attention in recent literature. This chapter reviews existing approaches, highlights their limitations, and positions the proposed EHR system within the current research landscape.
+
+\section{Blockchain in Healthcare}
+
+\textbf{Azaria et al. (2016)} proposed MedRec, one of the earliest blockchain-based EHR systems built on Ethereum. MedRec used smart contracts to manage access permissions and provided patients with an immutable log of their medical history. However, being built on a public blockchain, MedRec suffered from high transaction costs (gas fees), slow throughput, and lack of data privacy, as all transactions were visible on the public ledger.
+
+\textbf{Xia et al. (2017)} introduced MeDShare, a system for sharing medical data among cloud service providers using a blockchain-based access control mechanism. While MeDShare addressed data provenance and auditability, it relied on a centralized cloud backend for actual data storage, partially negating the decentralization benefits of blockchain.
+
+\textbf{Dubovitskaya et al. (2020)} developed a framework for managing and sharing Electronic Medical Records (EMRs) using Hyperledger Fabric. Their work demonstrated the advantages of permissioned blockchains for healthcare, including improved throughput and privacy. However, their deployment was limited to a single-machine test environment and did not address multi-node distributed deployment challenges.
+
+\section{Hyperledger Fabric for Enterprise Applications}
+
+Hyperledger Fabric has emerged as the preferred blockchain platform for enterprise healthcare applications due to its permissioned architecture, modular design, and support for private data collections. Key differentiators include:
+
+\begin{table}[h]
+\centering
+\caption{Comparison of Blockchain Platforms for Healthcare}
+\label{tab:blockchain_comparison}
+\begin{tabular}{|p{3.0cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|p{2.5cm}|}
+\hline
+\textbf{Feature} & \textbf{Ethereum} & \textbf{Bitcoin} & \textbf{Hyperledger Fabric} & \textbf{Our EHR System} \\
+\hline
+Network Type & Public & Public & Permissioned & Permissioned \\
+\hline
+Consensus & PoS & PoW & Raft/PBFT & Raft \\
+\hline
+Smart Contracts & Solidity & Script & Go/Node.js & Node.js \\
+\hline
+Throughput & ~30 TPS & ~7 TPS & ~3000 TPS & ~3000 TPS \\
+\hline
+Data Privacy & Low & Low & High (Channels) & High (ABAC) \\
+\hline
+Off-chain Storage & External & None & External & IPFS \\
+\hline
+\end{tabular}
+\end{table}
+
+\section{Off-Chain Storage Solutions}
+
+Storing large medical documents (X-ray images, lab reports, PDFs) directly on the blockchain is impractical due to block size limitations and storage costs. Several approaches have been proposed:
+
+\begin{itemize}
+    \item \textbf{IPFS (InterPlanetary File System):} A content-addressed, peer-to-peer storage network where files are identified by their cryptographic hash. Changing a file changes its hash, providing inherent tamper detection. The proposed EHR system adopts this approach.
+    \item \textbf{Cloud Storage with Hash Anchoring:} Files are stored on centralized cloud providers (AWS S3, Azure Blob) with only the hash recorded on-chain. This introduces a centralized dependency.
+    \item \textbf{Private Data Collections:} Hyperledger Fabric supports sideDB for storing private data that is shared only between authorized organizations. While useful for inter-organizational privacy, it does not solve the large-file storage problem.
+\end{itemize}
+
+% End of Related Work

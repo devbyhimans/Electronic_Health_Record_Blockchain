@@ -1,0 +1,288 @@
+\chapter{System Architecture}
+
+This chapter presents the overall system architecture of the Electronic Health Record (EHR) System, covering the network topology, distributed infrastructure, consensus mechanism, communication protocols, and data flow patterns.
+
+\section{High-Level Architecture}
+
+The EHR System follows a layered architecture consisting of four tiers:
+
+\begin{enumerate}
+    \item \textbf{Presentation Layer:} React.js-based frontend portals (Manager, Patient, Pharmacist, Inventory).
+    \item \textbf{Application Layer:} Node.js API Gateway bridging REST/HTTP requests to blockchain gRPC calls via the Fabric SDK.
+    \item \textbf{Blockchain Layer:} Hyperledger Fabric v2.5 network with Raft Ordering, Peers, CouchDB state databases, and Node.js Chaincode.
+    \item \textbf{Storage Layer:} IPFS for off-chain document storage with on-chain hash anchoring.
+\end{enumerate}
+
+% TODO: Add high-level architecture diagram image. We use tikz to dynamically render the simplified architecture directly!
+\begin{figure}[h]
+    \centering
+    \begin{tikzpicture}[
+        node distance=2cm and 3cm,
+        box/.style={draw=blue!80, fill=blue!10, text width=3cm, align=center, minimum height=1.5cm, rounded corners, thick},
+        ext/.style={draw=orange!80, fill=orange!10, text width=3.5cm, align=center, minimum height=1.5cm, rounded corners, thick, dashed}
+    ]
+        
+        \node[box] (pc1) {\textbf{PC1 (Ankit)}\\Orderer \& CA};
+        \node[box, below left=of pc1] (pc2) {\textbf{PC2 (Mohit)}\\Peer \& CouchDB};
+        \node[box, below right=of pc1] (pc3) {\textbf{PC3 (Ronit)}\\Peer \& API Gateway};
+        
+        \node[ext, right=3cm of pc3] (ipfs) {\textbf{IPFS Storage}\\(External Storage)};
+        
+        \draw[<->, thick, blue!60] (pc1) -- node[above left] {Gossip Sync} (pc2);
+        \draw[<->, thick, blue!60] (pc1) -- node[above right] {Gossip Sync} (pc3);
+        \draw[<->, thick, blue!60] (pc2) -- node[below] {Gossip Sync} (pc3);
+        
+        \draw[->, thick, dashed, orange!80] (pc3) -- node[above] {PDF Hashes} (ipfs);
+        
+    \end{tikzpicture}
+    \caption{Logical Component and Swarm Communication Architecture for the EHR System}
+    \label{fig:high_level_arch}
+\end{figure}
+
+\section{Multi-Node Deployment Topology}
+
+The system is deployed across three physical machines (PCs) interconnected via a \textbf{Tailscale VPN mesh}. Docker Swarm orchestrates container placement across the cluster.
+
+\begin{table}[h]
+\centering
+\caption{Node Deployment Topology}
+\label{tab:topology}
+\begin{tabular}{|l|l|l|l|}
+\hline
+\textbf{Node} & \textbf{Role} & \textbf{Operator} & \textbf{Key Components} \\
+\hline
+PC1 (192.168.1.10) & Swarm Manager & Ankit & Orderer, CA, Peer0, CouchDB0, Manager UI \\
+\hline
+PC2 (192.168.1.11) & Swarm Worker & Mohit & Peer1, CouchDB1, Patient UI, Pharmacist UI \\
+\hline
+PC3 (192.168.1.12) & Swarm Worker & Ronit & Peer2, CouchDB2, API Gateway, Inventory UI \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{landscape}
+\begin{figure}[p]
+    \centering
+    \begin{tikzpicture}[
+        node distance=1.5cm and 1cm,
+        pcline/.style={dashed, draw=gray, fill=gray!5, rounded corners},
+        app/.style={draw=cyan!70, fill=cyan!10, text width=2.5cm, align=center, minimum height=1cm, rounded corners},
+        fab/.style={draw=blue!80, fill=blue!10, text width=2.5cm, align=center, minimum height=1cm},
+        db/.style={draw=red!70, fill=red!10, text width=2cm, align=center, minimum height=1.2cm},
+        arrow/.style={->, thick, >=stealth}
+    ]
+    
+    % PC1 (Ankit)
+    \node[fab] (orderer) {\textbf{Raft Orderer}};
+    \node[fab, below=of orderer] (ca) {\textbf{Fabric CA}};
+    \node[fab, below=of ca] (peer0) {\textbf{Peer 0}};
+    \node[db, right=of peer0] (cdb0) {CouchDB 0};
+    \node[app, above=of orderer] (manui) {Manager UI};
+    
+    \begin{scope}[on background layer]
+        \node[pcline, fit=(orderer) (ca) (peer0) (cdb0) (manui), label={[font=\bfseries]above:PC1 (Ankit) Manager Node}] (pc1box) {};
+    \end{scope}
+
+    \draw[<->, thick] (peer0) -- (cdb0);
+    
+    % PC2  (Mohit)
+    \node[fab, right=5cm of peer0] (peer1) {\textbf{Peer 1}};
+    \node[db, right=of peer1] (cdb1) {CouchDB 1};
+    \node[app, above=3.5cm of peer1] (patui) {Patient UI};
+    \node[app, right=of patui] (pharmui) {Pharmacist UI};
+    
+    \begin{scope}[on background layer]
+        \node[pcline, fit=(peer1) (cdb1) (patui) (pharmui), label={[font=\bfseries]above:PC2 (Mohit) Worker 1}] (pc2box) {};
+    \end{scope}
+
+    \draw[<->, thick] (peer1) -- (cdb1);
+    
+    % PC3 (Ronit)
+    \node[fab, right=5cm of peer1] (peer2) {\textbf{Peer 2}};
+    \node[db, right=of peer2] (cdb2) {CouchDB 2};
+    \node[app, above=3cm of peer2] (api) {API Gateway SDK};
+    \node[app, above=of api] (invui) {Inventory UI};
+    \node[app, below=1.5cm of cdb2] (ipfs) {IPFS Node};
+    
+    \begin{scope}[on background layer]
+        \node[pcline, fit=(peer2) (cdb2) (api) (invui) (ipfs), label={[font=\bfseries]above:PC3 (Ronit) Worker 2}] (pc3box) {};
+    \end{scope}
+
+    \draw[<->, thick] (peer2) -- (cdb2);
+    \draw[<->, thick, dashed, orange] (api) -- node[right] {Doc CIDs} (ipfs);
+    
+    % Swarm Connections
+    \draw[<->, ultra thick, blue!50] (peer0) -- node[above] {Gossip Protocol} (peer1);
+    \draw[<->, ultra thick, blue!50] (peer1) -- node[above] {Gossip Protocol} (peer2);
+    
+    % Frontend to API connections
+    \draw[arrow, dashed] (patui) to[bend left] node[above] {REST} (api);
+    \draw[arrow, dashed] (pharmui) to[bend left] node[below] {REST} (api);
+    \draw[arrow, dashed] (manui) to[bend left=15] node[above] {REST} (api);
+    \draw[arrow, dashed] (invui) -- node[left] {REST} (api);
+    
+    % API to Peers
+    \draw[arrow, thick, green!50!black] (api) -- node[right] {gRPC} (peer2);
+    \draw[arrow, thick, green!50!black] (api) to[bend right=15] node[above, sloped] {gRPC} (peer1);
+    \draw[arrow, thick, green!50!black] (api) to[bend right=25] (peer0);
+    
+    % Peers to Orderer
+    \draw[arrow, dashed, red!70] (peer0) -- (orderer);
+    \draw[arrow, dashed, red!70] (peer1) to[bend left=15] node[above, sloped] {Submit} (orderer);
+    \draw[arrow, dashed, red!70] (peer2) to[bend left=25] (orderer);
+
+    \end{tikzpicture}
+    \caption{Comprehensive Container Map \& Topology Deployment}
+    \label{fig:complex_arch}
+\end{figure}
+\end{landscape}
+
+\section{Docker Swarm and Overlay Networking}
+
+Docker Swarm provides the orchestration layer that binds the three geographically separated machines into a unified logical cluster.
+
+\begin{itemize}
+    \item \textbf{Swarm Initialization:} PC1 acts as the Swarm Manager node. PC2 and PC3 join as Worker nodes using secure join tokens.
+    \item \textbf{Overlay Network:} A Docker overlay network (\texttt{fabric-swarm-net}) is created with the \texttt{--attachable} flag, enabling cross-node container communication through encrypted VXLAN tunnels.
+    \item \textbf{Tailscale VPN:} Since the nodes are not on the same physical LAN, Tailscale creates a WireGuard-based mesh VPN. This provides each node with a stable, private IP address (100.x.x.x) that Docker Swarm uses for inter-node communication.
+    \item \textbf{Service Discovery:} Docker Swarm handles DNS-based service discovery. Containers reference each other by service name (e.g., \texttt{peer1.org1.example.com}) rather than IP addresses.
+\end{itemize}
+
+\section{Hyperledger Fabric Network Configuration}
+
+\subsection{Organization and Channel}
+The network operates as a single organization (\texttt{Org1MSP}) with all three peers joined to a single channel (\texttt{mychannel}). Peer0 is configured as the \textbf{Anchor Peer} for Org1 to facilitate cross-node gossip-based peer discovery.
+
+\subsection{Consensus Mechanism}
+The EHR system uses the \textbf{Raft consensus protocol} for the Ordering Service. Raft provides:
+\begin{itemize}
+    \item Crash Fault Tolerance (CFT) without the computational overhead of Byzantine Fault Tolerance (BFT).
+    \item Leader-based ordering with automatic leader election upon failure.
+    \item Strong consistency guarantees suitable for single-organization deployments.
+\end{itemize}
+
+\subsection{Certificate Authority (CA)}
+The Fabric CA running on PC1 is the root of trust for the entire network. It generates X.509 certificates for:
+\begin{itemize}
+    \item Peer node identities (for network participation)
+    \item Admin identities (for channel and chaincode management)
+    \item User identities (for application-level authentication)
+\end{itemize}
+
+\subsection{Endorsement Policy}
+The chaincode uses the default lifecycle endorsement policy: \texttt{ANY member of Org1MSP}. This means a transaction is considered valid if endorsed by at least one peer, enabling efficient load-balanced transaction processing across the Swarm.
+
+\section{Transaction Lifecycle}
+
+Every transaction in the EHR System follows the Hyperledger Fabric \textbf{Execute-Order-Validate} paradigm:
+
+\subsection{Read Transaction (Query)}
+A Read transaction queries the current ledger state without modifying it. It bypasses the Orderer entirely, resulting in high throughput and low latency.
+
+\begin{figure}[h]
+\centering
+\scalebox{0.82}{
+\begin{tikzpicture}[
+    node distance=2cm,
+    actor/.style={draw, fill=gray!10, text width=2.2cm, align=center, minimum height=1cm, rounded corners},
+    arrow/.style={->, thick, >=stealth}
+]
+    % Draw Actors (Columns)
+    \node[actor] (UI) {\textbf{Frontend UI}};
+    \node[actor, right=of UI] (API) {\textbf{API Gateway}};
+    \node[actor, right=of API] (SDK) {\textbf{Fabric SDK}};
+    \node[actor, right=of SDK] (Peer) {\textbf{Peer Node}};
+    \node[actor, right=of Peer] (DB) {\textbf{CouchDB}};
+
+    % Draw Lifelines
+    \foreach \i in {UI, API, SDK, Peer, DB} {
+        \draw[dashed, gray] (\i.south) -- ++(0,-6);
+    }
+    
+    % Messages (Rows)
+    \draw[arrow] ([yshift=-1cm]UI.south) -- node[above, font=\footnotesize] {GET /api/patient} ([yshift=-1cm]API.south);
+    \draw[arrow] ([yshift=-1.8cm]API.south) -- node[above, font=\footnotesize] {Call Evaluate()} ([yshift=-1.8cm]SDK.south);
+    \draw[arrow] ([yshift=-2.6cm]SDK.south) -- node[above, font=\footnotesize] {gRPC Query} ([yshift=-2.6cm]Peer.south);
+    \draw[arrow] ([yshift=-3.4cm]Peer.south) -- node[above, font=\footnotesize] {State Lookup} ([yshift=-3.4cm]DB.south);
+    
+    \draw[arrow] ([yshift=-4.2cm]DB.south) -- node[below, font=\footnotesize] {JSON Data} ([yshift=-4.2cm]Peer.south);
+    \draw[arrow] ([yshift=-5.0cm]Peer.south) -- node[below, font=\footnotesize] {Result Payload} ([yshift=-5.0cm]SDK.south);
+    \draw[arrow] ([yshift=-5.8cm]SDK.south) -- node[below, font=\footnotesize] {Resolve Promise} ([yshift=-5.8cm]API.south);
+    \draw[arrow] ([yshift=-6.2cm]API.south) -- node[below, font=\footnotesize] {Return 200 OK} ([yshift=-6.2cm]UI.south);
+\end{tikzpicture}
+}
+\caption{Transaction Flow Diagram: Read Operation (Evaluate)}
+\label{fig:read_tx}
+\end{figure}
+
+\subsection{Write Transaction (Invoke)}
+A Write transaction alters the permanent blockchain state. It follows the three-step Execute-Order-Validate flow to ensure consensus and immutability across the Swarm.
+
+\begin{figure}[h]
+\centering
+\scalebox{0.75}{
+\begin{tikzpicture}[
+    node distance=1.5cm,
+    actor/.style={draw, fill=gray!10, text width=2.1cm, align=center, minimum height=1cm, rounded corners},
+    arrow/.style={->, thick, >=stealth}
+]
+    \node[actor] (UI) {\textbf{Frontend UI}};
+    \node[actor, right=of UI] (API) {\textbf{API Gateway}};
+    \node[actor, right=of API] (SDK) {\textbf{Fabric SDK}};
+    \node[actor, right=of SDK] (Peer) {\textbf{Endorsing Peer}};
+    \node[actor, right=of Peer] (Orderer) {\textbf{Raft Orderer}};
+    \node[actor, right=of Orderer] (DB) {\textbf{CouchDB}};
+
+    \foreach \i in {UI, API, SDK, Peer, Orderer, DB} {
+        \draw[dashed, gray] (\i.south) -- ++(0,-8);
+    }
+    
+    % Endorsement
+    \node[fill=blue!10, text width=12cm, align=center] at (7,-1) {\textbf{Phase 1: Endorsement Simulation}};
+    \draw[arrow] ([yshift=-1.8cm]UI.south) -- node[above, font=\footnotesize] {POST Data} ([yshift=-1.8cm]API.south);
+    \draw[arrow] ([yshift=-2.4cm]API.south) -- node[above, font=\footnotesize] {Call Submit()} ([yshift=-2.4cm]SDK.south);
+    \draw[arrow] ([yshift=-3.0cm]SDK.south) -- node[above, font=\footnotesize] {Send Proposal} ([yshift=-3.0cm]Peer.south);
+    \draw[arrow] ([yshift=-3.6cm]Peer.south) -- node[below, font=\footnotesize] {Signed R/W Set} ([yshift=-3.6cm]SDK.south);
+    
+    % Ordering
+    \node[fill=orange!10, text width=12cm, align=center] at (7,-4.5) {\textbf{Phase 2: Consensus Ordering}};
+    \draw[arrow] ([yshift=-5.2cm]SDK.south) -- node[above, font=\footnotesize] {Endorsements} ([yshift=-5.2cm]Orderer.south);
+    \draw[arrow] ([yshift=-5.8cm]Orderer.south) -- node[below, font=\footnotesize] {Broadcast Block} ([yshift=-5.8cm]Peer.south);
+
+    % Validation
+    \node[fill=green!10, text width=12cm, align=center] at (7,-6.6) {\textbf{Phase 3: Validation \& Commit}};
+    \draw[arrow] ([yshift=-7.4cm]Peer.south) -- node[above, font=\footnotesize] {Commit Block} ([yshift=-7.4cm]DB.south);
+    \draw[arrow] ([yshift=-7.8cm]Peer.south) -- node[below, font=\footnotesize] {Tx Event} ([yshift=-7.8cm]SDK.south);
+    \draw[arrow] ([yshift=-8.2cm]SDK.south) -- node[below, font=\footnotesize] {Resolve Promise} ([yshift=-8.2cm]API.south);
+    \draw[arrow] ([yshift=-8.5cm]API.south) -- node[below, font=\footnotesize] {Return 200 OK} ([yshift=-8.5cm]UI.south);
+\end{tikzpicture}
+}
+\caption{Transaction Flow Diagram: Write Operation (Submit)}
+\label{fig:write_tx}
+\end{figure}
+
+\section{Gossip Protocol and Data Synchronization}
+
+The Gossip protocol provides three critical functions:
+
+\begin{itemize}
+    \item \textbf{Peer Discovery:} Peers periodically exchange heartbeat messages to detect online/offline status of other peers across the Swarm.
+    \item \textbf{Block Dissemination:} Instead of the Orderer sending blocks to every peer individually, the Orderer delivers blocks to a leader peer, which gossips the data to remaining peers.
+    \item \textbf{State Reconciliation:} If a peer goes offline and misses blocks, the Gossip protocol automatically detects the height mismatch and transfers the missing blocks from neighbouring peers.
+\end{itemize}
+
+\section{Identity and Access Control}
+
+The EHR System implements a multi-layered security model:
+
+\begin{enumerate}
+    \item \textbf{Authentication (Peer Level):} Every transaction proposal includes the sender's X.509 certificate. The Peer cryptographically verifies the certificate's validity and issuing CA before processing.
+    \item \textbf{Authorization (Chaincode Level):} The Smart Contract implements \textbf{Attribute-Based Access Control (ABAC)}. It reads the sender's role (Manager, Billing, Inventory, Patient) from the certificate or ledger-based employee registry and enforces function-level permissions.
+\end{enumerate}
+
+\section{Hybrid Storage Strategy}
+
+\begin{itemize}
+    \item \textbf{On-Chain (CouchDB):} Lightweight metadata such as Patient IDs, Employee records, Inventory levels, and Bill references are stored directly on the blockchain ledger for high-frequency querying.
+    \item \textbf{Off-Chain (IPFS):} Heavy medical documents (prescriptions, scans, lab reports) are uploaded to IPFS. The API Gateway retrieves the content-addressed \textbf{CID (Content Identifier)} hash and records only this hash on the blockchain. This keeps the blockchain lightweight while ensuring document integrity through cryptographic hash verification.
+\end{itemize}

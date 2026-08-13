@@ -1,0 +1,161 @@
+\documentclass[10pt,aspectratio=169]{beamer}
+
+% Theme and Styling
+\usetheme{Madrid}
+\usecolortheme{whale}
+\setbeamertemplate{navigation symbols}{}
+\setbeamertemplate{footline}[frame number]
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage{graphicx}
+\usepackage{tikz}
+\usetikzlibrary{shapes, arrows.meta, positioning}
+\usepackage{booktabs}
+
+\title[MedBlock Contributions]{MedBlock v2: Team Contributions \& Infrastructure Ownership}
+\subtitle{Detailed Breakdown for Ankit, Mohit, and Ronit}
+\date{\today}
+
+\begin{document}
+
+% Title Panel (Not counted in the 9 core slides, but standard)
+\begin{frame}
+    \titlepage
+\end{frame}
+
+% ---------------------------------------------------------
+% SECTION 1: ANKIT
+% ---------------------------------------------------------
+
+% Slide 1: Ankit Overview
+\begin{frame}{Ankit: Lead Infrastructure Architect}
+    \begin{block}{Role Overview}
+        Responsible for overall network orchestration, Docker Swarm management, deployment automation, and the Manager Governance portal.
+    \end{block}
+    \vspace{0.5cm}
+    \textbf{Key Contributions:}
+    \begin{itemize}
+        \item \textbf{Docker Swarm Orchestration:} Clustered physical laptops into a single logical network using overlay mesh routing over Tailscale VPN.
+        \item \textbf{Automation Scripts:} Developed \texttt{deploy.sh} to automate cryptographic key generation and SCP distribution across nodes.
+        \item \textbf{Governance UI:} Built the Manager backend/frontend where hospital admins securely register new Doctors and generate X.509 certificates.
+    \end{itemize}
+\end{frame}
+
+% Slide 2: Ankit Containers
+\begin{frame}{Ankit: Container Ownership (PC1 / Swarm Master)}
+    Ankit operates \textbf{PC1}, which acts as the root of the network and Swarm Master.
+    \vspace{0.5cm}
+    
+    \textbf{Containers Hosted on PC1:}
+    \begin{enumerate}
+        \item \textbf{Fabric CA (Certificate Authority):} The root of cryptographic trust. Generates identities for all organizations.
+        \item \textbf{Raft Orderer:} Ensures network consensus. Receives executed transactions, orders them into blocks, and broadcasts them.
+        \item \textbf{Peer0 (Org1):} The anchor peer for the organization.
+        \item \textbf{CouchDB0:} The state database exclusively attached to Peer0.
+        \item \textbf{Manager Portal:} The React application authorizing network access.
+    \end{enumerate}
+\end{frame}
+
+% Slide 3: Ankit Deep Dive
+\begin{frame}{Ankit: Technical Deep Dive}
+    \begin{center}
+        \textbf{Solving the Genesis Problem}
+    \end{center}
+    \vspace{0.2cm}
+    Hyperledger requires absolute cryptographic synchronization before starting.
+    \begin{itemize}
+        \item \textbf{The Challenge:} Worker nodes (PC2/PC3) cannot boot their peers without their explicit private keys.
+        \item \textbf{The Solution:} The \texttt{deploy.sh} script dynamically intercepts the generated MSP (Membership Service Provider) keys from the CA and securely pushes them to Mohit and Ronit's disk volumes via SCP \textit{before} signaling Docker Swarm to deploy the containers over the overlay network.
+    \end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------
+% SECTION 2: MOHIT
+% ---------------------------------------------------------
+
+% Slide 4: Mohit Overview
+\begin{frame}{Mohit: Smart Contract Lead \& Clinical Frontends}
+    \begin{block}{Role Overview}
+        Responsible for the Fabric Chaincode (business logic), state database integration, and the privacy-focused clinical frontends (Patient/Pharmacist).
+    \end{block}
+    \vspace{0.5cm}
+    \textbf{Key Contributions:}
+    \begin{itemize}
+        \item \textbf{Chaincode Architecture:} Developed Node.js Smart Contracts defining structures for \textit{PatientRecord}, \textit{Prescription}, and \textit{AccessGrant}.
+        \item \textbf{Patient Self-Sovereignty:} Built the Patient UI where certificates guarantee users can exclusively view their own files.
+        \item \textbf{Off-Chain Integrity:} Integrated the React UI with the IPFS network for decentralized storage of heavy medical PDFs.
+    \end{itemize}
+\end{frame}
+
+% Slide 5: Mohit Containers
+\begin{frame}{Mohit: Container Ownership (PC2 / Worker Node 1)}
+    Mohit operates \textbf{PC2}, adding decentralization and executing smart contracts.
+    \vspace{0.5cm}
+    
+    \textbf{Containers Hosted on PC2:}
+    \begin{enumerate}
+        \item \textbf{Peer1 (Org1):} Executes the transaction proposals. It hosts the Chaincode Docker container alongside it.
+        \item \textbf{CouchDB1:} The state database exclusively attached to Peer1. 
+        \item \textbf{Patient App Container:} The React portal for patient logins.
+        \item \textbf{Pharmacist App Container:} The React portal for billing access.
+    \end{enumerate}
+\end{frame}
+
+% Slide 6: Mohit Deep Dive
+\begin{frame}{Mohit: Technical Deep Dive}
+    \begin{center}
+        \textbf{CouchDB Rich Queries \& ABAC}
+    \end{center}
+    \vspace{0.2cm}
+    \begin{itemize}
+        \item \textbf{Why CouchDB?} Replaced default LevelDB with CouchDB. This allows the Chaincode to execute complex JSON ('Mango') queries, such as instantly fetching all unfulfilled prescriptions for a specific Hospital without scanning the entire blockchain.
+        \item \textbf{ABAC (Attribute-Based Access Control):} The Pharmacist frontend proves our privacy model. The Chaincode validates the Pharmacist's certificate and strictly returns only the medicine name to the UI, explicitly hiding the Patient's private medical diagnosis.
+    \end{itemize}
+\end{frame}
+
+% ---------------------------------------------------------
+% SECTION 3: RONIT
+% ---------------------------------------------------------
+
+% Slide 7: Ronit Overview
+\begin{frame}{Ronit: Integration Architect \& Gateway Developer}
+    \begin{block}{Role Overview}
+        Responsible for the API Gateway (translating web requests to Blockchain actions), Fabric SDK bridging, and the full-stack Inventory Application.
+    \end{block}
+    \vspace{0.5cm}
+    \textbf{Key Contributions:}
+    \begin{itemize}
+        \item \textbf{Fabric API Gateway:} Built the central Node.js backend integrating the \texttt{fabric-network} SDK to securely sign HTTP transactions.
+        \item \textbf{Wallet Management:} Managed the FileSystemWallet mapping X.509 physical identities to active routing sessions.
+        \item \textbf{Supply Chain Trust:} Built the Inventory UI and integrated it with the core blockchain logic for automated stock tracking.
+    \end{itemize}
+\end{frame}
+
+% Slide 8: Ronit Containers
+\begin{frame}{Ronit: Container Ownership (PC3 / Worker Node 2)}
+    Ronit operates \textbf{PC3}, ensuring strict High Availability and Fault Tolerance.
+    \vspace{0.5cm}
+    
+    \textbf{Containers Hosted on PC3:}
+    \begin{enumerate}
+        \item \textbf{Peer2 (Org1):} Independent peer ensuring network survival if PC2 fails. Receives data via Gossip Dissemination.
+        \item \textbf{CouchDB2:} Maintains a mirrored, synchronized ledger state.
+        \item \textbf{Backend API Gateway Container:} The Node.js SDK server translating all REST calls to gRPC payload binaries.
+        \item \textbf{Inventory App Container:} The React portal tracking medicine.
+    \end{enumerate}
+\end{frame}
+
+% Slide 9: Ronit Deep Dive
+\begin{frame}{Ronit: Technical Deep Dive}
+    \begin{center}
+        \textbf{Immutable Supply Chain Deductions}
+    \end{center}
+    \vspace{0.2cm}
+    \begin{itemize}
+        \item \textbf{The Gateway Bridge:} React Apps cannot speak the binary gRPC language required by Fabric. The API Gateway intercepts standard web payloads, loads the user's secure certificate, and executes the mathematical transaction signatures automatically.
+        \item \textbf{Fraud Prevention:} Integrated the Inventory backend logic with Mohit's Pharmacist API. When a prescription is fulfilled, the API atomically triggers an \texttt{invokeChaincode} deduction. This permanently alters the ledger, making it mathematically impossible to dispense medicine without a trace.
+    \end{itemize}
+\end{frame}
+
+\end{document}

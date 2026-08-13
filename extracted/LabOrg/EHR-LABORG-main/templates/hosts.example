@@ -1,0 +1,7 @@
+# Fill in the real machine IPs once you have them.
+# Add these lines to /etc/hosts on all 3 machines.
+#
+# MACHINE1_IP  orderer.example.com peer0.lab.example.com
+# MACHINE2_IP  peer1.lab.example.com
+# MACHINE3_IP  peer2.lab.example.com
+
