@@ -29,6 +29,11 @@ The entire federated network (Hospital, Pharmacy, Lab) and all 14 associated Nod
 
 To run the entire project on your local machine:
 
+> [!IMPORTANT]
+> **Before you begin:**
+> 1. **Open Docker:** Ensure Docker Desktop is running. (Windows users: ensure WSL integration is enabled).
+> 2. **Open the right Terminal:** Windows users **must** open an Ubuntu WSL terminal to run these commands. Standard CMD/PowerShell will fail. macOS/Linux users can use their native Terminal.
+
 1. **Download Fabric Binaries:** Ensure you have the Hyperledger Fabric binaries downloaded. If you don't have them, refer to the [Setup Guide](docs/setup-guide.md) to download them into your local cache.
 2. **Launch Orchestrator:** From the root of this repository, run the orchestrator script:
    ```bash

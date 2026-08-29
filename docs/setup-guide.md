@@ -2,6 +2,12 @@
 
 This guide provides instructions to run each organization in standalone/single-node mode for local development.
 
+> [!IMPORTANT]
+> **Operating System & Terminal Requirements**
+> - **Windows Users:** You **MUST** use an Ubuntu WSL (Windows Subsystem for Linux) terminal. Do not use standard Command Prompt or PowerShell, as the Fabric bash scripts will fail.
+> - **macOS / Linux Users:** You can use your standard native Terminal.
+> - **Docker:** Ensure Docker Desktop is open and running in the background before executing any scripts. For Windows, ensure Docker's WSL Integration is enabled for your Ubuntu distribution.
+
 ## Hospital Organization
 
 To bring up the Hospital organization on a single node:
