@@ -13,6 +13,7 @@ Heavy clinical documents (like PDFs) are stored off-chain on IPFS, with only lig
 ## Architecture
 
 For a detailed view of the system's architecture, flowcharts, and technical stack, please refer to:
+- [Comprehensive System Overview](docs/system-overview.md) *(Start here!)*
 - [Architecture Documentation](docs/architecture.md)
 - [Implementation Roadmap](docs/roadmap.md)
 
@@ -22,17 +23,33 @@ For a detailed view of the system's architecture, flowcharts, and technical stac
 - **Tools:** Docker v24.0+, Docker Compose v2.20+, Node.js v18.x LTS, Git, cURL, jq
 - **Fabric Binaries:** Hyperledger Fabric v2.5.x binaries
 
-## Quickstarts
+## Quickstart (Running the Entire Network)
 
-The codebase has been refactored so that each organization can be run locally in a single-machine mode for development and testing.
+The entire federated network (Hospital, Pharmacy, Lab) and all 14 associated Node.js frontend/backend applications have been fully Dockerized for a simple, one-click startup experience.
 
-Detailed step-by-step instructions for booting up the network for each organization are available in the [Setup Guide](docs/setup-guide.md).
+To run the entire project on your local machine:
 
-* **Hospital Org:** `orgs/hospital/`
-* **Pharmacy Org:** `orgs/pharmacy/`
-* **Lab Org:** `orgs/lab/`
+1. **Download Fabric Binaries:** Ensure you have the Hyperledger Fabric binaries downloaded. If you don't have them, refer to the [Setup Guide](docs/setup-guide.md) to download them into your local cache.
+2. **Launch Orchestrator:** From the root of this repository, run the orchestrator script:
+   ```bash
+   bash start-all.sh
+   ```
+   *This script automatically sets up environment variables, launches all three Fabric blockchain networks, and starts the applications using Docker Compose.*
 
-Before running any script, make sure to copy all `.env.example` files to `.env` in the respective folders and fill in any required variables.
+3. **Access the Applications:** Once the orchestrator finishes, you can access the portals directly from your host browser:
+   * **Hospital UIs:** `http://localhost:5173` (Reception) | `http://localhost:5174` (Patient)
+   * **Pharmacy UIs:** `http://localhost:3001` through `3005`
+   * **Lab Gateway:** `http://localhost:3006`
+
+### Running Individual Organizations
+
+If you are a student group focusing **only on your specific module** and do not want to spin up the entire federated network, you can start just your organization in isolation. 
+
+Detailed, step-by-step instructions for booting up each organization individually are available in the [Setup Guide](docs/setup-guide.md).
+
+* **Hospital Org Codebase:** `orgs/hospital/`
+* **Pharmacy Org Codebase:** `orgs/pharmacy/`
+* **Lab Org Codebase:** `orgs/lab/`
 
 ## Module Ownership Table
 
@@ -45,5 +62,4 @@ The project has been divided among multiple groups. The table below outlines mod
 | **Lab Organization** | `orgs/lab/` | TBD |
 | **Digilocker System** | `orgs/digilocker/` | TBD |
 | **Agentic AI Integration** | (Cross-module) | TBD |
-
 Please refer to [CONTRIBUTING.md](CONTRIBUTING.md) for branch naming conventions, PR requirements, and instructions on forking the repository.
