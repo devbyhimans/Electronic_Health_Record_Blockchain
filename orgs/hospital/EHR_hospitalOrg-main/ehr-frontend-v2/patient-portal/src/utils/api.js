@@ -1,6 +1,6 @@
 import axios from 'axios'
 
-const BASE = 'http://localhost:3005'
+const BASE = 'http://localhost:4005'
 
 export const patientApi = axios.create({ baseURL: BASE })
 
