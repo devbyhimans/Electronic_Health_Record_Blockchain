@@ -1,0 +1,204 @@
+Lab Org Multi-Host Hyperledger Fabric Setup
+
+This repository gives you a 1 peer org + 1 orderer org Fabric network for your EHR project:
+
+Machine 1: orderer.example.com and peer0.lab.example.com
+Machine 2: peer1.lab.example.com
+Machine 3: peer2.lab.example.com
+
+Runtime split:
+
+Machine 1: macOS with Colima
+Machine 2: Ubuntu with native Docker Engine
+Machine 3: Ubuntu with native Docker Engine
+
+What This Repo Creates:
+
+One application org: LabMSP
+Three Lab peers across three different computers
+One orderer on machine 1
+One application channel: ehrchannel
+CouchDB on each peer host
+Fixed hostnames so you can fill in IPs later via /etc/hosts without regenerating certs
+
+Hostnames:
+
+orderer.example.com
+peer0.lab.example.com
+peer1.lab.example.com
+peer2.lab.example.com
+
+Add these to /etc/hosts on all machines:
+
+10.166.46.138 orderer.example.com peer0.lab.example.com
+10.166.46.204 peer1.lab.example.com
+10.166.46.38 peer2.lab.example.com
+
+Assumptions:
+
+You are using modern Fabric (not v1.4)
+Machine 1 runs macOS with Colima
+Machines 2 and 3 run Ubuntu with Docker
+Port 7050 on machine 1 is reachable from others
+Port 7051 on each machine is reachable from others
+
+Repo Layout:
+
+config/crypto-config.yaml – crypto material definition
+config/configtx.yaml – channel and orderer config
+docker/docker-compose.machine1.yaml – orderer + peer0
+docker/docker-compose.machine2.yaml – peer1
+docker/docker-compose.machine3.yaml – peer2
+env/network.env – shared values
+env/machine1.env – machine 1 values
+env/machine2.env – machine 2 values
+env/machine3.env – machine 3 values
+scripts/ – helper scripts
+chaincode/lab-results – sample smart contract
+client/node-gateway – Node.js gateway client
+
+Machine 1 Setup:
+
+Run:
+
+./scripts/use-colima.sh
+./scripts/download-fabric.sh
+./scripts/generate-artifacts.sh
+
+Then start:
+
+./scripts/start-machine1.sh
+
+Create channel:
+
+./scripts/create-channel.sh
+
+This generates:
+
+ehrchannel.block
+connection profiles
+
+Copy to Machine 2 and 3:
+
+rsync -av --delete /Users/prasoonk/Projects/laborg/ user@MACHINE2:~/laborg/
+rsync -av --delete /Users/prasoonk/Projects/laborg/ user@MACHINE3:~/laborg/
+
+Machine 2 Setup:
+
+Update /etc/hosts
+Install Docker if needed
+Run:
+
+./scripts/use-docker-linux.sh
+./scripts/download-fabric.sh
+./scripts/start-machine2.sh
+./scripts/join-channel.sh peer1
+
+Machine 3 Setup:
+
+Same steps as machine 2 but:
+
+./scripts/start-machine3.sh
+./scripts/join-channel.sh peer2
+
+Stop Commands:
+
+./scripts/stop-machine1.sh
+./scripts/stop-machine2.sh
+./scripts/stop-machine3.sh
+
+Important Notes:
+
+Uses cryptogen (not Fabric CA)
+Peers can use same port 7051
+Peers bootstrap to peer0
+Ubuntu machines must download Fabric binaries separately
+Fix Docker permission issues using usermod if needed
+
+Verify Network:
+
+./scripts/verify-network.sh
+
+Or:
+
+./scripts/verify-channel.sh peer0
+./scripts/verify-channel.sh peer1
+./scripts/verify-channel.sh peer2
+
+Deploy Chaincode:
+
+./scripts/deploy-labresults-machine1.sh
+
+Install on other peers:
+
+./scripts/install-chaincode.sh peer1
+./scripts/install-chaincode.sh peer2
+
+Query:
+
+./scripts/query-labresults.sh peer0 GetAllLabResults
+
+Invoke:
+
+./scripts/invoke-labresults.sh CreateLabResult labresult3 patient-1003 LIPID 2026-04-19T10:30:00Z REPORTED {"hdl":"54","ldl":"110","triglycerides":"145"}
+
+Node.js Client:
+
+cd client/node-gateway
+npm install
+node index.js getAll
+
+Web Dashboard:
+
+npm run web
+Open: http://localhost:3000
+
+IPFS:
+
+API: http://10.166.46.138:5001
+
+Gateway: http://10.166.46.138:8080
+
+Start with:
+
+./scripts/start-machine1.sh
+
+AI Features:
+
+Lab Report Analysis Agent
+Clinical Decision Support Agent
+
+Endpoints:
+
+POST /api/ipfs/add-json
+GET /api/ipfs/json/:cid
+POST /api/records/ipfs
+GET /api/records/:resultId/resolve-data
+POST /api/ai/analyze
+
+Project Summary:
+
+3-machine Fabric network working
+Chaincode lifecycle stable
+Gateway + dashboard integrated
+IPFS storage working
+Gemini AI integrated
+
+Machine Roles:
+
+Machine 1: Control + AI orchestration
+Machine 2: Clinical decision support
+Machine 3: Governance and audit
+
+AI Modules:
+
+Module A (Machine 1): Ingestion + triage
+Module B (Machine 2): Decision support
+Module C (Machine 3): Governance
+
+Execution Order:
+
+Machine 1 setup
+Copy repo
+Machine 2 setup
+Machine 3 setup
