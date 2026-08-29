@@ -1,27 +1,6 @@
-# Dependencies
-node_modules/
-**/node_modules/
-
-# Build and runtime data
-dist/
-build/
-*.tmp
-*.wal
-*.log
-**/etcdraft/
-**/data/orderer/
-**/data/peer/
-
-# Large media and archive files (exceeding GitHub file size limits)
-*.mp4
-*.webm
-*.mov
-*.avi
-*.mkv
-*.zip
-
-# System and editor files
-.DS_Store
-Thumbs.db
-.idea/
-.vscode/
+**/organizations/
+**/wallet/
+**/channel-artifacts/
+**/.generated/
+*.env
+!*.env.example
