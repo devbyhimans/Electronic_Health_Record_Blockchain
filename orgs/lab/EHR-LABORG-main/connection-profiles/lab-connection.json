@@ -1,0 +1,79 @@
+{
+  "name": "lab-ehr-network",
+  "version": "1.0.0",
+  "client": {
+    "organization": "LabMSP",
+    "connection": {
+      "timeout": {
+        "peer": {
+          "endorser": "300"
+        }
+      }
+    }
+  },
+  "organizations": {
+    "LabMSP": {
+      "mspid": "LabMSP",
+      "peers": [
+        "peer0.lab.example.com",
+        "peer1.lab.example.com",
+        "peer2.lab.example.com"
+      ]
+    }
+  },
+  "channels": {
+    "ehrchannel": {
+      "orderers": [
+        "orderer.example.com"
+      ],
+      "peers": {
+        "peer0.lab.example.com": {
+          "endorsingPeer": true,
+          "chaincodeQuery": true,
+          "ledgerQuery": true,
+          "eventSource": true
+        },
+        "peer1.lab.example.com": {
+          "endorsingPeer": true,
+          "chaincodeQuery": true,
+          "ledgerQuery": true,
+          "eventSource": true
+        },
+        "peer2.lab.example.com": {
+          "endorsingPeer": true,
+          "chaincodeQuery": true,
+          "ledgerQuery": true,
+          "eventSource": true
+        }
+      }
+    }
+  },
+  "peers": {
+    "peer0.lab.example.com": {
+      "url": "grpcs://peer0.lab.example.com:7051",
+      "tlsCACerts": {
+        "pem": "-----BEGIN CERTIFICATE-----\nMIICUzCCAfqgAwIBAgIRAKVzf3hqetnz99lkWsn34+swCgYIKoZIzj0EAwIwdDEL\nMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBG\ncmFuY2lzY28xGDAWBgNVBAoTD2xhYi5leGFtcGxlLmNvbTEeMBwGA1UEAxMVdGxz\nY2EubGFiLmV4YW1wbGUuY29tMB4XDTI2MDQxODEyMzYwMFoXDTM2MDQxNTEyMzYw\nMFowdDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcT\nDVNhbiBGcmFuY2lzY28xGDAWBgNVBAoTD2xhYi5leGFtcGxlLmNvbTEeMBwGA1UE\nAxMVdGxzY2EubGFiLmV4YW1wbGUuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcD\nQgAEZm1Yvv2GocbxW37WxMTsSTi6wie0Nvf+LwId7mqYEj/Ozh+frx37X7y1CdtA\ns2FKrE75r54pgIzEwjRKOXPvoqNtMGswDgYDVR0PAQH/BAQDAgGmMB0GA1UdJQQW\nMBQGCCsGAQUFBwMCBggrBgEFBQcDATAPBgNVHRMBAf8EBTADAQH/MCkGA1UdDgQi\nBCCmlXQaJrWyLHO3DIUnNVWjVZJP4ca/Vo6kb5LYdoRsiDAKBggqhkjOPQQDAgNH\nADBEAiA9kih22v0FAW1q6rvLP90G6iMDn0stqRlSqdKldDDfBAIgJ4rwSzr6htLL\nZw1u+mZ3KU/zJ6ELNudB8kenTQEaKtg=\n-----END CERTIFICATE-----\n"
+      }
+    },
+    "peer1.lab.example.com": {
+      "url": "grpcs://peer1.lab.example.com:7051",
+      "tlsCACerts": {
+        "pem": "-----BEGIN CERTIFICATE-----\nMIICUzCCAfqgAwIBAgIRAKVzf3hqetnz99lkWsn34+swCgYIKoZIzj0EAwIwdDEL\nMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBG\ncmFuY2lzY28xGDAWBgNVBAoTD2xhYi5leGFtcGxlLmNvbTEeMBwGA1UEAxMVdGxz\nY2EubGFiLmV4YW1wbGUuY29tMB4XDTI2MDQxODEyMzYwMFoXDTM2MDQxNTEyMzYw\nMFowdDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcT\nDVNhbiBGcmFuY2lzY28xGDAWBgNVBAoTD2xhYi5leGFtcGxlLmNvbTEeMBwGA1UE\nAxMVdGxzY2EubGFiLmV4YW1wbGUuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcD\nQgAEZm1Yvv2GocbxW37WxMTsSTi6wie0Nvf+LwId7mqYEj/Ozh+frx37X7y1CdtA\ns2FKrE75r54pgIzEwjRKOXPvoqNtMGswDgYDVR0PAQH/BAQDAgGmMB0GA1UdJQQW\nMBQGCCsGAQUFBwMCBggrBgEFBQcDATAPBgNVHRMBAf8EBTADAQH/MCkGA1UdDgQi\nBCCmlXQaJrWyLHO3DIUnNVWjVZJP4ca/Vo6kb5LYdoRsiDAKBggqhkjOPQQDAgNH\nADBEAiA9kih22v0FAW1q6rvLP90G6iMDn0stqRlSqdKldDDfBAIgJ4rwSzr6htLL\nZw1u+mZ3KU/zJ6ELNudB8kenTQEaKtg=\n-----END CERTIFICATE-----\n"
+      }
+    },
+    "peer2.lab.example.com": {
+      "url": "grpcs://peer2.lab.example.com:7051",
+      "tlsCACerts": {
+        "pem": "-----BEGIN CERTIFICATE-----\nMIICUzCCAfqgAwIBAgIRAKVzf3hqetnz99lkWsn34+swCgYIKoZIzj0EAwIwdDEL\nMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBG\ncmFuY2lzY28xGDAWBgNVBAoTD2xhYi5leGFtcGxlLmNvbTEeMBwGA1UEAxMVdGxz\nY2EubGFiLmV4YW1wbGUuY29tMB4XDTI2MDQxODEyMzYwMFoXDTM2MDQxNTEyMzYw\nMFowdDELMAkGA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcT\nDVNhbiBGcmFuY2lzY28xGDAWBgNVBAoTD2xhYi5leGFtcGxlLmNvbTEeMBwGA1UE\nAxMVdGxzY2EubGFiLmV4YW1wbGUuY29tMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcD\nQgAEZm1Yvv2GocbxW37WxMTsSTi6wie0Nvf+LwId7mqYEj/Ozh+frx37X7y1CdtA\ns2FKrE75r54pgIzEwjRKOXPvoqNtMGswDgYDVR0PAQH/BAQDAgGmMB0GA1UdJQQW\nMBQGCCsGAQUFBwMCBggrBgEFBQcDATAPBgNVHRMBAf8EBTADAQH/MCkGA1UdDgQi\nBCCmlXQaJrWyLHO3DIUnNVWjVZJP4ca/Vo6kb5LYdoRsiDAKBggqhkjOPQQDAgNH\nADBEAiA9kih22v0FAW1q6rvLP90G6iMDn0stqRlSqdKldDDfBAIgJ4rwSzr6htLL\nZw1u+mZ3KU/zJ6ELNudB8kenTQEaKtg=\n-----END CERTIFICATE-----\n"
+      }
+    }
+  },
+  "orderers": {
+    "orderer.example.com": {
+      "url": "grpcs://orderer.example.com:7050",
+      "tlsCACerts": {
+        "pem": "-----BEGIN CERTIFICATE-----\nMIICQzCCAemgAwIBAgIQYyLMKAP+xy66Abf5s1K7GDAKBggqhkjOPQQDAjBsMQsw\nCQYDVQQGEwJVUzETMBEGA1UECBMKQ2FsaWZvcm5pYTEWMBQGA1UEBxMNU2FuIEZy\nYW5jaXNjbzEUMBIGA1UEChMLZXhhbXBsZS5jb20xGjAYBgNVBAMTEXRsc2NhLmV4\nYW1wbGUuY29tMB4XDTI2MDQxODEyMzYwMFoXDTM2MDQxNTEyMzYwMFowbDELMAkG\nA1UEBhMCVVMxEzARBgNVBAgTCkNhbGlmb3JuaWExFjAUBgNVBAcTDVNhbiBGcmFu\nY2lzY28xFDASBgNVBAoTC2V4YW1wbGUuY29tMRowGAYDVQQDExF0bHNjYS5leGFt\ncGxlLmNvbTBZMBMGByqGSM49AgEGCCqGSM49AwEHA0IABGVWOfFNNbo7BLLKGhH7\noMamEL7qIQX7nZmGDDuTBp2+yOR59KzIKJmSyWFIjoitws+WK+d9DnG02Z0kDU7R\nZfCjbTBrMA4GA1UdDwEB/wQEAwIBpjAdBgNVHSUEFjAUBggrBgEFBQcDAgYIKwYB\nBQUHAwEwDwYDVR0TAQH/BAUwAwEB/zApBgNVHQ4EIgQgRVgIS7wnUN3aC6r0daK4\n9Ap6SydnPE9+cQEV8y0ULnMwCgYIKoZIzj0EAwIDSAAwRQIgMW0foX8u/Ppgusrv\nxvuOR1Q22RcBCNnkyFbAf9NZzmsCIQDj1e1ZOwxlumeBqbN9CRL74ediTLiLtUV1\nGUjiLIqaCA==\n-----END CERTIFICATE-----\n"
+      }
+    }
+  }
+}

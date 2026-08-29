@@ -1,0 +1,28 @@
+.generated/
+channel-artifacts/
+organizations/
+system-genesis-block/
+data/
+dist/
+node_modules/
+
+# OS/editor/runtime noise
+.DS_Store
+*.swp
+*.swo
+*.tmp
+
+# Logs and process artifacts
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+*.pid
+client/node-gateway/server.pid
+
+# Local archives and binary artifacts not needed in source repo
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+config_block.pb

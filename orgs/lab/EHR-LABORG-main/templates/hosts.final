@@ -1,0 +1,3 @@
+127.0.0.1 orderer.example.com peer0.lab.example.com
+127.0.0.1 peer1.lab.example.com
+127.0.0.1 peer2.lab.example.com
