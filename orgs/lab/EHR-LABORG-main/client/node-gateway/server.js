@@ -30,6 +30,11 @@ const {
   ipfsHealth,
   readJsonFromIpfs,
 } = require('./ipfs');
+const {
+  runWorkflow,
+  approveWorkflowRun,
+  getWorkflowState,
+} = require('./orchestrator/orchestrator');
 
 const app = express();
 const PORT = Number(process.env.PORT || 3000);
@@ -512,6 +517,45 @@ app.get('/api/records/:resultId/resolve-data', async (req, res, next) => {
       resolved: true,
       ipfs: ipfsPayload,
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/agents/run', async (req, res, next) => {
+  try {
+    const state = await runWorkflow(req.body);
+    res.status(202).json(state.toJSON());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.get('/api/agents/run/:runId', (req, res, next) => {
+  try {
+    const state = getWorkflowState(req.params.runId);
+
+    if (!state) {
+      res.status(404).json({
+        error: `Workflow run ${req.params.runId} not found`
+      });
+      return;
+    }
+
+    res.json(state.toJSON());
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/agents/run/:runId/approve', async (req, res, next) => {
+  try {
+    const state = await approveWorkflowRun(
+      req.params.runId,
+      req.body
+    );
+
+    res.json(state.toJSON());
   } catch (error) {
     next(error);
   }
