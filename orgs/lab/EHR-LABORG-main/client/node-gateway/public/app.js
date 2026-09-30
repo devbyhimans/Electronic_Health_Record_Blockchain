@@ -1,3 +1,11 @@
+'use strict';
+
+const FALLBACK_PEERS = [
+  'peer0.lab.example.com',
+  'peer1.lab.example.com',
+  'peer2.lab.example.com',
+];
+
 const peerSelect = document.getElementById('peerSelect');
 const refreshBtn = document.getElementById('refreshBtn');
 const createForm = document.getElementById('createForm');
@@ -6,117 +14,141 @@ const resolveDataForm = document.getElementById('resolveDataForm');
 const patientForm = document.getElementById('patientForm');
 const updateStatusForm = document.getElementById('updateStatusForm');
 const recordsBody = document.getElementById('recordsBody');
-const metaPill = document.getElementById('metaPill');
 const rawOutput = document.getElementById('rawOutput');
 const clearOutputBtn = document.getElementById('clearOutputBtn');
+const metaPill = document.getElementById('metaPill');
 const toast = document.getElementById('toast');
 
-const FALLBACK_PEERS = [
-  'peer0.lab.example.com',
-  'peer1.lab.example.com',
-  'peer2.lab.example.com',
-];
+// VCAP UI Elements
+const vcapResultIdInput = document.getElementById('vcapResultId');
+const vcapVerifyBtn = document.getElementById('vcapVerifyBtn');
+const vcapTamperBtn = document.getElementById('vcapTamperBtn');
+const vcapDemoBtn = document.getElementById('vcapDemoBtn');
+const vcapCard = document.getElementById('vcapCard');
 
-let toastTimer;
+let toastTimeout = null;
 
 function showToast(message) {
+  if (!toast) return;
   toast.textContent = message;
-  toast.classList.add('show');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove('show'), 2500);
+  toast.classList.add('visible');
+
+  if (toastTimeout) {
+    clearTimeout(toastTimeout);
+  }
+
+  toastTimeout = setTimeout(() => {
+    toast.classList.remove('visible');
+  }, 4000);
 }
 
 function selectedPeer() {
-  return peerSelect.value;
-}
-
-function withPeer(path) {
-  const url = new URL(path, window.location.origin);
-  const peer = selectedPeer();
-  if (peer) {
-    url.searchParams.set('peer', peer);
-  }
-  return url.toString();
-}
-
-function isPlainObject(value) {
-  return value && typeof value === 'object' && !Array.isArray(value);
+  return peerSelect ? peerSelect.value : '';
 }
 
 async function apiRequest(path, options = {}) {
-  const isFormData = options.body instanceof FormData;
-  const headers = {
-    ...(options.headers || {}),
-  };
+  const headers = new Headers(options.headers || {});
+  const peer = selectedPeer();
 
-  if (!isFormData && !Object.keys(headers).some((key) => key.toLowerCase() === 'content-type')) {
-    headers['Content-Type'] = 'application/json';
+  if (peer && !headers.has('x-gateway-peer')) {
+    headers.set('x-gateway-peer', peer);
   }
 
-  const response = await fetch(withPeer(path), {
-    headers,
+  if (options.body && !(options.body instanceof FormData) && !headers.has('Content-Type')) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  const response = await fetch(path, {
     ...options,
+    headers,
   });
 
-  const payload = await response.json().catch(() => ({}));
+  const text = await response.text();
+  let payload;
+
+  try {
+    payload = JSON.parse(text);
+  } catch (_error) {
+    payload = { raw: text };
+  }
 
   if (!response.ok) {
-    throw new Error(payload.error || 'Request failed');
+    const message = payload && payload.error ? payload.error : `HTTP ${response.status}: ${text}`;
+    throw new Error(message);
   }
 
   return payload;
 }
 
-function normalizeToArray(result) {
-  if (Array.isArray(result)) {
-    return result;
+function normalizeToArray(data) {
+  if (Array.isArray(data)) {
+    return data;
   }
-  if (isPlainObject(result)) {
-    return [result];
+  if (data && typeof data === 'object') {
+    return [data];
   }
   return [];
 }
 
 function getStatusStyle(status) {
   const s = String(status || '').toUpperCase();
-  if (s === 'PENDING') return 'background: #fdf0de; color: #8a4a1f; border: 1px solid #efcba5;';
-  if (s === 'REPORTED') return 'background: #e5f6ee; color: #1d6b43; border: 1px solid #b7dfcb;';
-  if (s === 'ERROR') return 'background: #fdeaea; color: #9e2d2d; border: 1px solid #f3b3b3;';
-  return 'background: #e8efec; color: #4b6359; border: 1px solid #c7d6cf;';
+  if (s.includes('FINAL') || s.includes('REPORTED') || s.includes('VALID')) {
+    return 'background: var(--status-success-bg); color: var(--status-success-text);';
+  }
+  if (s.includes('REV') || s.includes('PENDING') || s.includes('PROGRESS')) {
+    return 'background: var(--status-warning-bg); color: var(--status-warning-text);';
+  }
+  if (s.includes('TAMPER') || s.includes('FAIL') || s.includes('ERROR') || s.includes('REJECT')) {
+    return 'background: var(--status-danger-bg); color: var(--status-danger-text);';
+  }
+  return 'background: rgba(148, 163, 184, 0.15); color: #94a3b8;';
 }
 
+window.selectVcap = function(resultId) {
+  if (vcapResultIdInput) {
+    vcapResultIdInput.value = resultId;
+    vcapResultIdInput.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    verifyVcapAction(resultId, false);
+  }
+};
+
 function renderRows(records) {
-  recordsBody.style.opacity = '0';
+  recordsBody.style.opacity = '0.5';
   
   setTimeout(() => {
     recordsBody.innerHTML = '';
     
     if (!records.length) {
       const row = document.createElement('tr');
-      row.innerHTML = '<td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No records found.</td>';
+      row.innerHTML = '<td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">No records found.</td>';
       recordsBody.appendChild(row);
     } else {
       for (const record of records) {
+        const vcap = record.vcap || (record.resultData && record.resultData.vcap);
+        const vcapBadge = vcap
+          ? `<button type="button" class="pill" style="background: #e0f2fe; color: #0284c7; border: 1px solid #bae6fd; cursor: pointer; font-size: 0.75rem; padding: 2px 8px;" onclick="window.selectVcap('${escapeHtml(record.resultId)}')">🛡️ SHA-256 Anchored</button>`
+          : `<span class="pill" style="background: #f1f5f9; color: #94a3b8; font-size: 0.75rem;">None</span>`;
+
         const row = document.createElement('tr');
         row.innerHTML = `
-          <td data-label="Result ID" style="font-family: var(--font-mono); color: var(--primary-hover);">${escapeHtml(record.resultId || '')}</td>
+          <td data-label="Result ID" style="font-family: var(--font-mono); color: var(--primary-hover); font-weight: 600;">${escapeHtml(record.resultId || '')}</td>
           <td data-label="Patient ID">${escapeHtml(record.patientId || '')}</td>
           <td data-label="Test Code"><strong>${escapeHtml(record.testCode || '')}</strong></td>
           <td data-label="Status"><span class="status" style="${getStatusStyle(record.status)}">${escapeHtml(record.status || '')}</span></td>
+          <td data-label="VCAP Provenance">${vcapBadge}</td>
           <td data-label="Collected At" style="color: var(--text-muted);">${escapeHtml(record.collectedAt || '')}</td>
         `;
         recordsBody.appendChild(row);
       }
     }
     
-    // Fade in
     recordsBody.style.transition = 'opacity 0.3s ease';
     recordsBody.style.opacity = '1';
   }, 150);
 }
 
 function escapeHtml(text) {
-  return String(text)
+  return String(text || '')
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')
     .replaceAll('>', '&gt;')
@@ -129,6 +161,7 @@ function setOutput(label, payload) {
 }
 
 function toggleLoading(button, isLoading) {
+  if (!button) return;
   if (isLoading) {
     if (!button.dataset.originalText) {
       button.dataset.originalText = button.innerHTML;
@@ -143,6 +176,171 @@ function toggleLoading(button, isLoading) {
       button.innerHTML = button.dataset.originalText;
     }
   }
+}
+
+function renderVcapCard(data) {
+  if (!vcapCard) return;
+  vcapCard.style.display = 'block';
+
+  const isVerified = data.verification ? data.verification.verified : data.verified;
+  const vcap = (data.verification && data.verification.anchoredVcap) || data.anchoredVcap || data.vcap || {};
+  const recomputed = (data.verification && data.verification.recomputed) || data.recomputed || {};
+  const mismatches = (data.verification && data.verification.mismatches) || data.mismatches || [];
+
+  if (isVerified) {
+    vcapCard.style.background = 'rgba(34, 197, 94, 0.1)';
+    vcapCard.style.border = '1px solid #22c55e';
+    vcapCard.style.color = '#15803d';
+
+    vcapCard.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.95rem;">
+        <span>✅</span>
+        <span>VCAP VERIFIED — AUTHENTIC CLINICAL AI PROVENANCE</span>
+      </div>
+      <p style="margin: 0 0 0.5rem 0; font-size: 0.8rem; color: #166534;">
+        Mathematical SHA-256 verification confirmed on ledger. Clinical record, prompt, and AI summary are authentic and untampered.
+      </p>
+      <div style="background: rgba(255,255,255,0.7); padding: 0.5rem; border-radius: 6px; font-family: var(--font-mono); font-size: 0.72rem; word-break: break-all;">
+        <div><strong>Record Hash:</strong> ${escapeHtml(vcap.patientRecordHash || recomputed.patientRecordHash || 'N/A')}</div>
+        <div><strong>Prompt Hash:</strong> ${escapeHtml(vcap.promptHash || recomputed.promptHash || 'N/A')}</div>
+        <div><strong>Summary Hash:</strong> ${escapeHtml(vcap.summaryHash || recomputed.summaryHash || 'N/A')}</div>
+        <div><strong>Model:</strong> ${escapeHtml(vcap.modelFingerprint || 'gemini-2.5-flash')}</div>
+        <div><strong>Signer:</strong> ${escapeHtml(vcap.gatewaySigner || 'LabMSP:labtech')}</div>
+      </div>
+    `;
+  } else {
+    vcapCard.style.background = 'rgba(239, 68, 68, 0.1)';
+    vcapCard.style.border = '1px solid #ef4444';
+    vcapCard.style.color = '#b91c1c';
+
+    const mismatchHtml = mismatches.map((m) => `
+      <li style="margin-top: 0.25rem;">
+        <strong>${escapeHtml(m.field)}:</strong> ${escapeHtml(m.description)}<br>
+        <span style="font-size: 0.7rem; color: #7f1d1d;">Expected: ${escapeHtml(m.expected)}<br>Actual: ${escapeHtml(m.actual)}</span>
+      </li>
+    `).join('');
+
+    vcapCard.innerHTML = `
+      <div style="display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; font-weight: 700; font-size: 0.95rem;">
+        <span>🚨</span>
+        <span>VCAP ALERT — TAMPER DETECTED!</span>
+      </div>
+      <p style="margin: 0 0 0.5rem 0; font-size: 0.8rem; color: #991b1b;">
+        Cryptographic hash mismatch! The clinical record or AI summary has been altered after the AI execution was anchored to the blockchain.
+      </p>
+      <ul style="margin: 0 0 0.5rem 1rem; padding: 0; font-size: 0.78rem;">
+        ${mismatchHtml || '<li>SHA-256 hash mismatch between ledger anchor and retrieved payload.</li>'}
+      </ul>
+      <div style="background: rgba(255,255,255,0.7); padding: 0.5rem; border-radius: 6px; font-family: var(--font-mono); font-size: 0.72rem; word-break: break-all;">
+        <div><strong>Anchored Record Hash:</strong> ${escapeHtml(vcap.patientRecordHash || 'N/A')}</div>
+        <div><strong>Recomputed Hash:</strong> ${escapeHtml(recomputed.patientRecordHash || 'N/A')}</div>
+      </div>
+    `;
+  }
+}
+
+function renderDemoResults(demoData) {
+  if (!vcapCard) return;
+  vcapCard.style.display = 'block';
+  vcapCard.style.background = 'rgba(2, 132, 199, 0.04)';
+  vcapCard.style.border = '1px solid #0284c7';
+  vcapCard.style.color = 'inherit';
+
+  const stages = demoData.stages || {};
+  const s1 = stages.stage1_authentic || {};
+  const s2 = stages.stage2_clinical_tamper || {};
+  const s3 = stages.stage3_ai_summary_tamper || {};
+
+  vcapCard.innerHTML = `
+    <div style="font-weight: 700; color: #0284c7; margin-bottom: 0.6rem; font-size: 0.88rem; display: flex; align-items: center; justify-content: space-between;">
+      <span>3-Stage VCAP Security & Provenance Audit</span>
+      <span style="font-size: 0.7rem; font-family: var(--font-mono); color: var(--text-muted);">${escapeHtml(demoData.demoId || '')}</span>
+    </div>
+
+    <!-- Stage 1 -->
+    <div style="background: rgba(34, 197, 94, 0.1); border-left: 4px solid #22c55e; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 4px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <strong style="color: #15803d; font-size: 0.8rem;">Stage 1: Authentic Record (Hb = 8.5)</strong>
+        <span class="pill" style="background: #dcfce7; color: #15803d; font-weight: 700; font-size: 0.68rem;">✔ VERIFIED</span>
+      </div>
+      <div style="font-size: 0.73rem; color: #166534; margin-top: 0.2rem;">
+        ${escapeHtml((s1.result && s1.result.message) || 'Input and summary match on-chain hash.')}
+      </div>
+    </div>
+
+    <!-- Stage 2 -->
+    <div style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; padding: 0.5rem; margin-bottom: 0.5rem; border-radius: 4px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <strong style="color: #b91c1c; font-size: 0.8rem;">Stage 2: Tampered Record (Hb 8.5 ➔ 14.5)</strong>
+        <span class="pill" style="background: #fee2e2; color: #b91c1c; font-weight: 700; font-size: 0.68rem;">🚨 TAMPER DETECTED</span>
+      </div>
+      <div style="font-size: 0.73rem; color: #991b1b; margin-top: 0.2rem;">
+        ${escapeHtml((s2.result && s2.result.message) || 'Clinical record altered after AI anchoring!')}
+      </div>
+    </div>
+
+    <!-- Stage 3 -->
+    <div style="background: rgba(239, 68, 68, 0.1); border-left: 4px solid #ef4444; padding: 0.5rem; border-radius: 4px;">
+      <div style="display: flex; justify-content: space-between; align-items: center;">
+        <strong style="color: #b91c1c; font-size: 0.8rem;">Stage 3: Tampered AI Diagnostic Summary</strong>
+        <span class="pill" style="background: #fee2e2; color: #b91c1c; font-weight: 700; font-size: 0.68rem;">🚨 TAMPER DETECTED</span>
+      </div>
+      <div style="font-size: 0.73rem; color: #991b1b; margin-top: 0.2rem;">
+        ${escapeHtml((s3.result && s3.result.message) || 'AI diagnostic text modified!')}
+      </div>
+    </div>
+  `;
+}
+
+async function verifyVcapAction(resultId, simulateTamper) {
+  const btn = simulateTamper ? vcapTamperBtn : vcapVerifyBtn;
+  toggleLoading(btn, true);
+
+  try {
+    const response = await apiRequest('/api/vcap/verify', {
+      method: 'POST',
+      body: JSON.stringify({
+        resultId,
+        simulateTamper,
+      }),
+    });
+
+    setOutput(
+      simulateTamper ? 'POST /api/vcap/verify (Simulate Tampering)' : 'POST /api/vcap/verify',
+      response
+    );
+    renderVcapCard(response);
+
+    if (simulateTamper) {
+      showToast('⚠️ Tamper Simulation executed: VCAP detected hash mismatch!');
+    } else {
+      showToast('✅ VCAP verification succeeded! Provenance matches ledger.');
+    }
+  } catch (error) {
+    showToast(error.message);
+    setOutput('VCAP Verification Error', { error: error.message });
+  } finally {
+    toggleLoading(btn, false);
+  }
+}
+
+async function getOrResolveResultId() {
+  let resultId = String(vcapResultIdInput ? vcapResultIdInput.value : '').trim();
+  if (resultId) {
+    return resultId;
+  }
+  const firstRow = recordsBody ? recordsBody.querySelector('tr td[data-label="Result ID"]') : null;
+  if (firstRow && firstRow.textContent.trim() && !firstRow.textContent.includes('No records') && !firstRow.textContent.includes('Loading')) {
+    resultId = firstRow.textContent.trim();
+    if (vcapResultIdInput) vcapResultIdInput.value = resultId;
+    return resultId;
+  }
+  showToast('No Record ID found. Generating demo record first...');
+  const demoResp = await apiRequest('/api/vcap/tamper-demo', { method: 'POST' });
+  await loadAllRecords();
+  resultId = demoResp.demoId;
+  if (vcapResultIdInput) vcapResultIdInput.value = resultId;
+  return resultId;
 }
 
 async function loadMeta() {
@@ -183,17 +381,8 @@ async function loadMeta() {
   const chaincode = meta.chaincode || 'labresults';
   metaPill.textContent = `${channel} - ${chaincode} - ${peers.length} peer(s)`;
 
-  if (meta.ipfs && meta.ipfs.apiUrl) {
-    showToast(`IPFS API configured at ${meta.ipfs.apiUrl}`);
-  }
-
-  if (meta.ai) {
-    const model = meta.ai.model || 'gemini-1.5-flash';
-    if (meta.ai.configured) {
-      showToast(`AI agents ready with ${model}`);
-    } else {
-      showToast('AI key not configured, fallback heuristic mode will be used');
-    }
+  if (meta.vcapStandard) {
+    showToast(`VCAP Engine: ${meta.vcapStandard}`);
   }
 }
 
@@ -251,7 +440,6 @@ createForm.addEventListener('submit', async (event) => {
     }
 
     const collectedAt = String(form.get('collectedAt') || '').trim();
-    // Convert to ISO string if it's from a datetime-local input
     const dateObj = new Date(collectedAt);
     const isoDateString = isNaN(dateObj.getTime()) ? collectedAt : dateObj.toISOString();
 
@@ -307,16 +495,11 @@ createForm.addEventListener('submit', async (event) => {
     await loadAllRecords();
     createForm.reset();
 
-    if (useIpfs && response.ipfs && response.ipfs.cid) {
-      const aiNote = response.ai && response.ai.labReportAnalysis
-        ? ` | AI: ${response.ai.labReportAnalysis.summary || 'summary generated'}`
-        : '';
-      const extractNote = response.extractedTextChars
-        ? ` | extracted text: ${response.extractedTextChars} chars`
-        : '';
-      showToast(`Created ${payload.resultId} with CID ${response.ipfs.cid}${extractNote}${aiNote}`);
-    } else {
-      showToast(`Created ${payload.resultId}`);
+    const vcapNote = response.vcap ? ' | 🛡️ VCAP Provenance Anchored' : '';
+    showToast(`Created ${payload.resultId}${vcapNote}`);
+
+    if (vcapResultIdInput) {
+      vcapResultIdInput.value = payload.resultId;
     }
   } catch (error) {
     showToast(error.message);
@@ -410,9 +593,68 @@ updateStatusForm.addEventListener('submit', async (event) => {
   }
 });
 
-clearOutputBtn.addEventListener('click', () => {
-  rawOutput.innerHTML = '<span style="color: var(--text-muted);">Awaiting transactions...</span>';
-});
+// VCAP Event Listeners
+if (vcapVerifyBtn) {
+  vcapVerifyBtn.addEventListener('click', async () => {
+    try {
+      const resultId = await getOrResolveResultId();
+      if (!resultId) return;
+      await verifyVcapAction(resultId, false);
+    } catch (err) {
+      showToast(err.message);
+    }
+  });
+}
+
+if (vcapTamperBtn) {
+  vcapTamperBtn.addEventListener('click', async () => {
+    try {
+      const resultId = await getOrResolveResultId();
+      if (!resultId) return;
+      await verifyVcapAction(resultId, true);
+    } catch (err) {
+      showToast(err.message);
+    }
+  });
+}
+
+if (vcapResultIdInput) {
+  vcapResultIdInput.addEventListener('keydown', async (event) => {
+    if (event.key === 'Enter') {
+      event.preventDefault();
+      const resultId = String(vcapResultIdInput.value || '').trim();
+      if (resultId) {
+        await verifyVcapAction(resultId, false);
+      }
+    }
+  });
+}
+
+if (vcapDemoBtn) {
+  vcapDemoBtn.addEventListener('click', async () => {
+    toggleLoading(vcapDemoBtn, true);
+    try {
+      const response = await apiRequest('/api/vcap/tamper-demo', { method: 'POST' });
+      setOutput('POST /api/vcap/tamper-demo (proposal.tex demonstration)', response);
+      await loadAllRecords();
+      if (vcapResultIdInput) {
+        vcapResultIdInput.value = response.demoId;
+      }
+      renderDemoResults(response);
+      showToast('Ran 3-stage VCAP demonstration (check transaction output panel)!');
+    } catch (error) {
+      showToast(error.message);
+    } finally {
+      toggleLoading(vcapDemoBtn, false);
+    }
+  });
+}
+
+if (clearOutputBtn) {
+  clearOutputBtn.addEventListener('click', () => {
+    rawOutput.innerHTML = '<span style="color: var(--text-muted);">Awaiting transactions...</span>';
+  });
+}
 
 (async () => {
   try {

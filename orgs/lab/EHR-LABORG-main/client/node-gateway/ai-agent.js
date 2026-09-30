@@ -1,5 +1,7 @@
 'use strict';
 
+const { generateVcapRecord, verifyVcapRecord, sha256 } = require('./vcap');
+
 const DEFAULT_MODEL = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
 const GEMINI_BASE_URL = 'https://generativelanguage.googleapis.com/v1beta';
 const GEMINI_STABLE_BASE_URL = 'https://generativelanguage.googleapis.com/v1';
@@ -11,11 +13,9 @@ const MODEL_FALLBACKS = [
 ];
 
 function shouldRetryAnotherModel(modelName, statusCode) {
-  // User-required behavior: if Gemini 2.5 Flash fails, immediately allow fallback to Flash Lite.
   if (modelName === 'gemini-2.5-flash') {
     return true;
   }
-
   return statusCode === 404 || statusCode === 429 || statusCode >= 500;
 }
 
@@ -28,7 +28,6 @@ function uniqueNonEmpty(values) {
     if (!text || seen.has(text)) {
       continue;
     }
-
     seen.add(text);
     out.push(text);
   }
@@ -76,11 +75,9 @@ function trimReportTextForPrompt(reportText, maxChars = 6000) {
   if (!normalized) {
     return '';
   }
-
   if (normalized.length <= maxChars) {
     return normalized;
   }
-
   return `${normalized.slice(0, maxChars)}\n...[truncated ${normalized.length - maxChars} chars]`;
 }
 
@@ -102,14 +99,11 @@ function parseJsonFromModelText(rawText, modelName) {
   try {
     return JSON.parse(trimmed);
   } catch (_error) {
-    // Some models wrap JSON in markdown fences.
     const fenceMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
     if (fenceMatch && fenceMatch[1]) {
       try {
         return JSON.parse(fenceMatch[1]);
-      } catch (_innerError) {
-        // Fall through to generic error below.
-      }
+      } catch (_innerError) {}
     }
   }
 
@@ -161,7 +155,6 @@ async function callGeminiJson({
         const message = `Gemini API request failed for model ${modelName} via ${baseUrl} (${response.status}): ${text || response.statusText}`;
         errors.push(message);
 
-        // Retry according to model/status policy, including explicit Flash -> Flash Lite fallback.
         if (shouldRetryAnotherModel(modelName, response.status)) {
           continue;
         }
@@ -295,22 +288,24 @@ function buildDecisionSupportPrompt({
 async function runLabReportAnalysisAgent({ resultData, testCode, patientId, reportText, reportTextSource }) {
   const systemInstruction =
     'You support clinicians by summarizing abnormalities. You are not a decision-maker.';
+  const prompt = buildLabReportPrompt({
+    resultData,
+    testCode,
+    patientId,
+    reportText,
+    reportTextSource,
+  });
 
   const result = await callGeminiJson({
     systemInstruction,
-    userPrompt: buildLabReportPrompt({
-      resultData,
-      testCode,
-      patientId,
-      reportText,
-      reportTextSource,
-    }),
+    userPrompt: prompt,
     temperature: 0.2,
   });
   const aiOutput = result.data;
 
   return {
     modelUsed: result.modelUsed,
+    promptUsed: `${systemInstruction}\n\n${prompt}`,
     summary: String(aiOutput.summary || '').trim() || 'No summary generated.',
     abnormalities: normalizeToArray(aiOutput.abnormalities).map((item) => String(item)),
     riskFlags: normalizeToArray(aiOutput.riskFlags).map((item) => String(item)),
@@ -329,23 +324,25 @@ async function runClinicalDecisionSupportAgent({
 }) {
   const systemInstruction =
     'You provide clinician support suggestions from trends and current labs. You are not a replacement for doctors.';
+  const prompt = buildDecisionSupportPrompt({
+    resultData,
+    testCode,
+    patientId,
+    patientHistory,
+    reportText,
+    reportTextSource,
+  });
 
   const result = await callGeminiJson({
     systemInstruction,
-    userPrompt: buildDecisionSupportPrompt({
-      resultData,
-      testCode,
-      patientId,
-      patientHistory,
-      reportText,
-      reportTextSource,
-    }),
+    userPrompt: prompt,
     temperature: 0.2,
   });
   const aiOutput = result.data;
 
   return {
     modelUsed: result.modelUsed,
+    promptUsed: `${systemInstruction}\n\n${prompt}`,
     recommendation: String(aiOutput.recommendation || '').trim() || 'No recommendation generated.',
     possibleRisks: normalizeToArray(aiOutput.possibleRisks).map((item) => String(item)),
     nextSteps: normalizeToArray(aiOutput.nextSteps).map((item) => String(item)),
@@ -365,8 +362,40 @@ async function runAgenticClinicalAnalysis({
   const config = getAiAgentConfig();
   const generatedAt = new Date().toISOString();
   const reportTextCharCount = normalizeReportText(reportText).length;
+  const gatewaySigner = process.env.GATEWAY_SIGNER || 'LabMSP:labtech';
+
+  const clinicalInput = {
+    resultData,
+    testCode: testCode || '',
+    patientId: patientId || '',
+    reportText: normalizeReportText(reportText),
+  };
+
+  const labPrompt = buildLabReportPrompt({
+    resultData,
+    testCode,
+    patientId,
+    reportText,
+    reportTextSource,
+  });
 
   if (!config.configured) {
+    const labReportAnalysis = fallbackLabReportAnalysis(resultData, reportText);
+    const clinicalDecisionSupport = fallbackDecisionSupport(patientHistory, reportText);
+    const resolvedModel = 'fallback-heuristic';
+
+    const vcap = generateVcapRecord({
+      clinicalRecord: clinicalInput,
+      prompt: labPrompt,
+      modelFingerprint: resolvedModel,
+      aiSummary: {
+        summary: labReportAnalysis.summary,
+        recommendation: clinicalDecisionSupport.recommendation,
+      },
+      gatewaySigner,
+      timestamp: generatedAt,
+    });
+
     return {
       ok: false,
       provider: config.provider,
@@ -374,10 +403,13 @@ async function runAgenticClinicalAnalysis({
       generatedAt,
       reportTextCharCount,
       warning: 'Gemini API key is not configured; using fallback heuristics.',
-      labReportAnalysis: fallbackLabReportAnalysis(resultData, reportText),
-      clinicalDecisionSupport: fallbackDecisionSupport(patientHistory, reportText),
+      labReportAnalysis,
+      clinicalDecisionSupport,
       disclaimer:
         'AI output is assistive only and must be reviewed by a licensed clinician.',
+      vcap,
+      clinicalInput,
+      activePrompt: labPrompt,
     };
   }
 
@@ -403,6 +435,19 @@ async function runAgenticClinicalAnalysis({
     const resolvedModel =
       clinicalDecisionSupport.modelUsed || labReportAnalysis.modelUsed || config.model;
 
+    const activePrompt = labReportAnalysis.promptUsed || labPrompt;
+    const vcap = generateVcapRecord({
+      clinicalRecord: clinicalInput,
+      prompt: activePrompt,
+      modelFingerprint: resolvedModel,
+      aiSummary: {
+        summary: labReportAnalysis.summary,
+        recommendation: clinicalDecisionSupport.recommendation,
+      },
+      gatewaySigner,
+      timestamp: generatedAt,
+    });
+
     return {
       ok: true,
       provider: config.provider,
@@ -413,8 +458,27 @@ async function runAgenticClinicalAnalysis({
       clinicalDecisionSupport,
       disclaimer:
         'AI output is assistive only and must be reviewed by a licensed clinician.',
+      vcap,
+      clinicalInput,
+      activePrompt,
     };
   } catch (error) {
+    const labReportAnalysis = fallbackLabReportAnalysis(resultData, reportText);
+    const clinicalDecisionSupport = fallbackDecisionSupport(patientHistory, reportText);
+    const resolvedModel = `${config.model}-failed-fallback`;
+
+    const vcap = generateVcapRecord({
+      clinicalRecord: clinicalInput,
+      prompt: labPrompt,
+      modelFingerprint: resolvedModel,
+      aiSummary: {
+        summary: labReportAnalysis.summary,
+        recommendation: clinicalDecisionSupport.recommendation,
+      },
+      gatewaySigner,
+      timestamp: generatedAt,
+    });
+
     return {
       ok: false,
       provider: config.provider,
@@ -422,10 +486,13 @@ async function runAgenticClinicalAnalysis({
       generatedAt,
       reportTextCharCount,
       warning: `Gemini call failed: ${error.message}`,
-      labReportAnalysis: fallbackLabReportAnalysis(resultData, reportText),
-      clinicalDecisionSupport: fallbackDecisionSupport(patientHistory, reportText),
+      labReportAnalysis,
+      clinicalDecisionSupport,
       disclaimer:
         'AI output is assistive only and must be reviewed by a licensed clinician.',
+      vcap,
+      clinicalInput,
+      activePrompt: labPrompt,
     };
   }
 }
@@ -433,4 +500,8 @@ async function runAgenticClinicalAnalysis({
 module.exports = {
   getAiAgentConfig,
   runAgenticClinicalAnalysis,
+  buildLabReportPrompt,
+  buildDecisionSupportPrompt,
+  generateVcapRecord,
+  verifyVcapRecord,
 };

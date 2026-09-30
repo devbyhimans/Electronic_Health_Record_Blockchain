@@ -10,7 +10,13 @@ loadGatewayEnvironment();
 const {
   getAiAgentConfig,
   runAgenticClinicalAnalysis,
+  buildLabReportPrompt,
 } = require('./ai-agent');
+const {
+  generateVcapRecord,
+  verifyVcapRecord,
+  sha256,
+} = require('./vcap');
 const {
   createLabResult,
   getAllLabResults,
@@ -18,6 +24,8 @@ const {
   listGatewayPeers,
   readLabResult,
   updateLabStatus,
+  getVcapProvenance,
+  verifyVcap,
 } = require('./gateway');
 const {
   extractTextFromLabReport,
@@ -158,6 +166,7 @@ app.get('/api/meta', (_req, res) => {
     defaultPeer: process.env.GATEWAY_PEER || 'peer0.lab.example.com',
     channel: 'ehrchannel',
     chaincode: 'labresults',
+    vcapStandard: 'VCAP-HL7-FABRIC v1.0.0 (proposal.tex)',
     ipfs,
     ai: {
       provider: ai.provider,
@@ -169,11 +178,6 @@ app.get('/api/meta', (_req, res) => {
 
 app.get('/api/ipfs/health', async (_req, res) => {
   const health = await ipfsHealth();
-  if (!health.ok) {
-    res.status(503).json(health);
-    return;
-  }
-
   res.json(health);
 });
 
@@ -245,6 +249,7 @@ app.post('/api/ai/analyze', async (req, res, next) => {
       historyCount: patientHistory.length,
       warnings,
       ai,
+      vcap: ai.vcap,
       aiIpfs,
     });
   } catch (error) {
@@ -283,6 +288,18 @@ app.get('/api/patients/:patientId/records', async (req, res, next) => {
 
 app.post('/api/records', async (req, res, next) => {
   try {
+    const peerName = selectedPeer(req);
+    let vcap = req.body.vcap || null;
+
+    if (!vcap && parseBooleanValue(req.body.runAiAgents, false)) {
+      const ai = await runAgenticClinicalAnalysis({
+        resultData: req.body.resultData,
+        testCode: req.body.testCode,
+        patientId: req.body.patientId,
+      });
+      vcap = ai.vcap;
+    }
+
     const response = await createLabResult(
       {
         resultId: req.body.resultId,
@@ -291,8 +308,9 @@ app.post('/api/records', async (req, res, next) => {
         collectedAt: req.body.collectedAt,
         status: req.body.status,
         resultData: req.body.resultData,
+        vcap,
       },
-      { peerName: selectedPeer(req) }
+      { peerName }
     );
 
     res.status(201).json(response);
@@ -450,6 +468,13 @@ app.post('/api/records/ipfs', uploadReportFile.single('reportFile'), async (req,
         warning: ai.warning,
         disclaimer: ai.disclaimer,
       };
+
+      // Anchor VCAP Cryptographic Provenance
+      if (ai.vcap) {
+        chainResultData.vcap = ai.vcap;
+        chainResultData.clinicalInput = ai.clinicalInput;
+        chainResultData.activePrompt = ai.activePrompt;
+      }
     }
 
     const response = await createLabResult(
@@ -460,6 +485,7 @@ app.post('/api/records/ipfs', uploadReportFile.single('reportFile'), async (req,
         collectedAt: trimmedField(req.body.collectedAt),
         status: trimmedField(req.body.status),
         resultData: chainResultData,
+        vcap: (ai && ai.vcap) || null,
       },
       { peerName }
     );
@@ -471,6 +497,7 @@ app.post('/api/records/ipfs', uploadReportFile.single('reportFile'), async (req,
       extractedTextChars: extractedReportText.length,
       extractedTextPreview: extractedReportText.slice(0, 500),
       ai,
+      vcap: (ai && ai.vcap) || null,
       aiIpfs,
       warnings,
     });
@@ -511,6 +538,259 @@ app.get('/api/records/:resultId/resolve-data', async (req, res, next) => {
       ...response,
       resolved: true,
       ipfs: ipfsPayload,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// ═════════════════════════════════════════════════════════════════════════════
+// VCAP REST API ENDPOINTS: Provenance Inspection & Tamper Verification
+// ═════════════════════════════════════════════════════════════════════════════
+
+app.get('/api/records/:resultId/vcap', async (req, res, next) => {
+  try {
+    const peerName = selectedPeer(req);
+    const readResp = await readLabResult(req.params.resultId, { peerName });
+    const record = readResp.result;
+
+    const vcap = record.vcap || (record.resultData && record.resultData.vcap) || null;
+    if (!vcap) {
+      res.status(404).json({
+        ok: false,
+        error: `Record ${req.params.resultId} does not contain an on-chain VCAP anchor.`,
+      });
+      return;
+    }
+
+    res.json({
+      ok: true,
+      resultId: req.params.resultId,
+      vcap,
+      docType: record.docType,
+      patientId: record.patientId,
+      testCode: record.testCode,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/vcap/verify', async (req, res, next) => {
+  try {
+    const resultId = trimmedField(req.body.resultId);
+    if (!resultId) {
+      throw new Error('resultId is required');
+    }
+
+    const peerName = selectedPeer(req);
+    const readResp = await readLabResult(resultId, { peerName });
+    const record = readResp.result;
+
+    const vcap = record.vcap || (record.resultData && record.resultData.vcap) || null;
+    if (!vcap) {
+      res.status(404).json({
+        ok: false,
+        error: `Record ${resultId} does not contain an on-chain VCAP anchor.`,
+      });
+      return;
+    }
+
+    // Resolve clinical input
+    let clinicalRecord = req.body.clinicalRecord;
+    let aiSummary = req.body.aiSummary;
+    let promptText = req.body.prompt;
+
+    if (!clinicalRecord) {
+      if (record.resultData && record.resultData.clinicalInput) {
+        clinicalRecord = record.resultData.clinicalInput;
+      } else if (record.resultData && record.resultData.storage === 'ipfs' && record.resultData.cid) {
+        try {
+          const ipfsDoc = await readJsonFromIpfs(record.resultData.cid);
+          clinicalRecord = {
+            resultData: ipfsDoc.data && ipfsDoc.data.resultData ? ipfsDoc.data.resultData : ipfsDoc.data,
+            testCode: record.testCode,
+            patientId: record.patientId,
+            reportText: (ipfsDoc.data && ipfsDoc.data.extractedText) || '',
+          };
+        } catch (_e) {
+          clinicalRecord = {
+            resultData: record.resultData,
+            testCode: record.testCode,
+            patientId: record.patientId,
+            reportText: '',
+          };
+        }
+      } else {
+        clinicalRecord = {
+          resultData: (record.resultData && record.resultData.metrics) || record.resultData,
+          testCode: record.testCode,
+          patientId: record.patientId,
+          reportText: '',
+        };
+      }
+    }
+
+    if (!aiSummary) {
+      if (record.resultData && record.resultData.ai) {
+        aiSummary = {
+          summary: record.resultData.ai.summary || '',
+          recommendation: record.resultData.ai.recommendation || '',
+        };
+      } else {
+        aiSummary = { summary: 'No summary' };
+      }
+    }
+
+    if (!promptText && record.resultData && record.resultData.activePrompt) {
+      promptText = record.resultData.activePrompt;
+    }
+
+    // Handle simulation flag
+    const simulateTamper = parseBooleanValue(req.body.simulateTamper, false);
+    const tamperTarget = req.body.tamperTarget || 'clinicalRecord';
+
+    if (simulateTamper) {
+      if (tamperTarget === 'clinicalRecord') {
+        // Classic example from proposal.tex: change Hb from 8.5 to 14.5
+        clinicalRecord = JSON.parse(JSON.stringify(clinicalRecord));
+        if (clinicalRecord.resultData && typeof clinicalRecord.resultData === 'object') {
+          clinicalRecord.resultData.hemoglobin = '14.5 (TAMPERED: was 8.5)';
+        } else {
+          clinicalRecord = { ...clinicalRecord, tampered: true, alteredValue: '14.5' };
+        }
+      } else if (tamperTarget === 'aiSummary') {
+        aiSummary = {
+          summary: 'TAMPERED: All diagnostic values perfectly normal, patient healthy.',
+          recommendation: 'TAMPERED: No treatment necessary.',
+        };
+      }
+    }
+
+    // Call Fabric Chaincode VerifyVCAP
+    const contractResp = await verifyVcap(
+      resultId,
+      clinicalRecord,
+      promptText || '',
+      aiSummary,
+      vcap.modelFingerprint,
+      { peerName }
+    );
+
+    res.json({
+      ok: true,
+      resultId,
+      simulateTamper,
+      tamperTarget: simulateTamper ? tamperTarget : null,
+      verification: contractResp.result,
+      fabricLive: contractResp.fabricLive,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+app.post('/api/vcap/tamper-demo', async (_req, res, next) => {
+  try {
+    const demoId = `vcap-demo-${Date.now()}`;
+    const clinicalInput = {
+      resultData: { hemoglobin: '8.5', wbc: '9600', platelets: '220000' },
+      testCode: 'CBC-ANEMIA-PANEL',
+      patientId: 'patient-demo-1',
+      reportText: 'Patient shows signs of fatigue. Lab Hemoglobin measured at 8.5 g/dL.',
+    };
+
+    const promptText = buildLabReportPrompt({
+      resultData: clinicalInput.resultData,
+      testCode: clinicalInput.testCode,
+      patientId: clinicalInput.patientId,
+      reportText: clinicalInput.reportText,
+    });
+
+    const aiSummary = {
+      summary: 'Possible anemia pattern detected due to low hemoglobin (8.5 g/dL).',
+      recommendation: 'Evaluate iron stores and consider clinical correlation for anemia.',
+    };
+
+    // 1. Generate VCAP anchor
+    const vcap = generateVcapRecord({
+      clinicalRecord: clinicalInput,
+      prompt: promptText,
+      modelFingerprint: 'gemini-2.5-flash',
+      aiSummary,
+      gatewaySigner: 'LabMSP:labtech',
+    });
+
+    // 2. Anchor to ledger
+    await createLabResult({
+      resultId: demoId,
+      patientId: clinicalInput.patientId,
+      testCode: clinicalInput.testCode,
+      collectedAt: new Date().toISOString(),
+      status: 'FINAL',
+      resultData: {
+        storage: 'ledger',
+        metrics: clinicalInput.resultData,
+        clinicalInput,
+        activePrompt: promptText,
+        ai: aiSummary,
+        vcap,
+      },
+      vcap,
+    });
+
+    // 3. Step 1: Authentic Verification
+    const step1Authentic = verifyVcapRecord({
+      vcap,
+      clinicalRecord: clinicalInput,
+      prompt: promptText,
+      aiSummary,
+      modelFingerprint: 'gemini-2.5-flash',
+    });
+
+    // 4. Step 2: Clinical Input Tamper Simulation (Hb 8.5 -> 14.5)
+    const tamperedInput = JSON.parse(JSON.stringify(clinicalInput));
+    tamperedInput.resultData.hemoglobin = '14.5';
+    const step2ClinicalTamper = verifyVcapRecord({
+      vcap,
+      clinicalRecord: tamperedInput,
+      prompt: promptText,
+      aiSummary,
+      modelFingerprint: 'gemini-2.5-flash',
+    });
+
+    // 5. Step 3: AI Output Tamper Simulation
+    const tamperedSummary = {
+      summary: 'Altered diagnosis: Hemoglobin is completely normal, patient does not have anemia.',
+      recommendation: 'No follow up needed.',
+    };
+    const step3AiTamper = verifyVcapRecord({
+      vcap,
+      clinicalRecord: clinicalInput,
+      prompt: promptText,
+      aiSummary: tamperedSummary,
+      modelFingerprint: 'gemini-2.5-flash',
+    });
+
+    res.json({
+      ok: true,
+      demoId,
+      explanation: 'VCAP (Verifiable Clinical AI Provenance) Demonstration based on proposal.tex Section 7',
+      anchoredVcap: vcap,
+      stages: {
+        stage1_authentic: {
+          description: 'Original authentic clinical record and AI summary verified against on-chain VCAP.',
+          result: step1Authentic,
+        },
+        stage2_clinical_tamper: {
+          description: 'Malicious modification: Hemoglobin changed from 8.5 to 14.5.',
+          result: step2ClinicalTamper,
+        },
+        stage3_ai_summary_tamper: {
+          description: 'Malicious modification: AI summary rewritten to claim patient is healthy.',
+          result: step3AiTamper,
+        },
+      },
     });
   } catch (error) {
     next(error);
