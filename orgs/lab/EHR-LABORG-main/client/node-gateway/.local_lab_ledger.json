@@ -592,5 +592,225 @@
     },
     "ownerOrg": "LabMSP",
     "updatedByTx": "mock-tx-1790703739783"
+  },
+  "vcap-demo-1791180444747": {
+    "docType": "labResult",
+    "resultId": "vcap-demo-1791180444747",
+    "patientId": "patient-demo-1",
+    "testCode": "CBC-ANEMIA-PANEL",
+    "collectedAt": "2026-10-05T06:07:24.748Z",
+    "status": "FINAL",
+    "resultData": {
+      "storage": "ledger",
+      "metrics": {
+        "hemoglobin": "8.5",
+        "wbc": "9600",
+        "platelets": "220000"
+      },
+      "clinicalInput": {
+        "resultData": {
+          "hemoglobin": "8.5",
+          "wbc": "9600",
+          "platelets": "220000"
+        },
+        "testCode": "CBC-ANEMIA-PANEL",
+        "patientId": "patient-demo-1",
+        "reportText": "Patient shows signs of fatigue. Lab Hemoglobin measured at 8.5 g/dL."
+      },
+      "activePrompt": "You are a clinical lab analysis assistant.\nAnalyze lab result payload and identify possible abnormalities.\nIf reportExtractedText is present, treat it as OCR/text extracted from an uploaded PDF/image lab report and use it as additional context.\nReturn strict JSON with keys:\nsummary (string), abnormalities (array of strings), riskFlags (array of strings), confidence (high|medium|low).\nKeep it concise and non-diagnostic. Mention uncertainty where relevant.\npatientId: patient-demo-1\ntestCode: CBC-ANEMIA-PANEL\nresultData: {\"hemoglobin\":\"8.5\",\"wbc\":\"9600\",\"platelets\":\"220000\"}\nreportTextSource: \nreportExtractedText: Patient shows signs of fatigue. Lab Hemoglobin measured at 8.5 g/dL.",
+      "ai": {
+        "summary": "Possible anemia pattern detected due to low hemoglobin (8.5 g/dL).",
+        "recommendation": "Evaluate iron stores and consider clinical correlation for anemia."
+      },
+      "vcap": {
+        "version": "1.0.0",
+        "standard": "VCAP-HL7-FABRIC",
+        "patientRecordHash": "2139a8d592fbde4e3bf71fdf9878b5f41c6eaa7f1d328b5d029becc2fb467e92",
+        "promptHash": "850340acf9e2f4e4f3926539db7efa2e21474209eab1fbcfa1c38caadbd9e6d8",
+        "modelFingerprint": "gemini-2.5-flash",
+        "summaryHash": "2f0f0aca6e000ba1c77bf63660c8429945c806cf2bb03ebca92e07d75c9f3adf",
+        "timestamp": "2026-10-05T06:07:24.748Z",
+        "gatewaySigner": "LabMSP:labtech",
+        "algorithm": "SHA-256"
+      }
+    },
+    "vcap": {
+      "version": "1.0.0",
+      "standard": "VCAP-HL7-FABRIC",
+      "patientRecordHash": "2139a8d592fbde4e3bf71fdf9878b5f41c6eaa7f1d328b5d029becc2fb467e92",
+      "promptHash": "850340acf9e2f4e4f3926539db7efa2e21474209eab1fbcfa1c38caadbd9e6d8",
+      "modelFingerprint": "gemini-2.5-flash",
+      "summaryHash": "2f0f0aca6e000ba1c77bf63660c8429945c806cf2bb03ebca92e07d75c9f3adf",
+      "timestamp": "2026-10-05T06:07:24.748Z",
+      "gatewaySigner": "LabMSP:labtech",
+      "algorithm": "SHA-256"
+    },
+    "ownerOrg": "LabMSP",
+    "updatedByTx": "mock-tx-1791180444749"
+  },
+  "vcap-demo-1791180647407": {
+    "docType": "labResult",
+    "resultId": "vcap-demo-1791180647407",
+    "patientId": "patient-demo-1",
+    "testCode": "CBC-ANEMIA-PANEL",
+    "collectedAt": "2026-10-05T06:10:47.407Z",
+    "status": "FINAL",
+    "resultData": {
+      "storage": "ledger",
+      "metrics": {
+        "hemoglobin": "8.5",
+        "wbc": "9600",
+        "platelets": "220000"
+      },
+      "clinicalInput": {
+        "resultData": {
+          "hemoglobin": "8.5",
+          "wbc": "9600",
+          "platelets": "220000"
+        },
+        "testCode": "CBC-ANEMIA-PANEL",
+        "patientId": "patient-demo-1",
+        "reportText": "Patient shows signs of fatigue. Lab Hemoglobin measured at 8.5 g/dL."
+      },
+      "activePrompt": "You are a clinical lab analysis assistant.\nAnalyze lab result payload and identify possible abnormalities.\nIf reportExtractedText is present, treat it as OCR/text extracted from an uploaded PDF/image lab report and use it as additional context.\nReturn strict JSON with keys:\nsummary (string), abnormalities (array of strings), riskFlags (array of strings), confidence (high|medium|low).\nKeep it concise and non-diagnostic. Mention uncertainty where relevant.\npatientId: patient-demo-1\ntestCode: CBC-ANEMIA-PANEL\nresultData: {\"hemoglobin\":\"8.5\",\"wbc\":\"9600\",\"platelets\":\"220000\"}\nreportTextSource: \nreportExtractedText: Patient shows signs of fatigue. Lab Hemoglobin measured at 8.5 g/dL.",
+      "ai": {
+        "summary": "Possible anemia pattern detected due to low hemoglobin (8.5 g/dL).",
+        "recommendation": "Evaluate iron stores and consider clinical correlation for anemia."
+      },
+      "vcap": {
+        "version": "1.0.0",
+        "standard": "VCAP-HL7-FABRIC",
+        "patientRecordHash": "2139a8d592fbde4e3bf71fdf9878b5f41c6eaa7f1d328b5d029becc2fb467e92",
+        "promptHash": "850340acf9e2f4e4f3926539db7efa2e21474209eab1fbcfa1c38caadbd9e6d8",
+        "modelFingerprint": "gemini-2.5-flash",
+        "summaryHash": "2f0f0aca6e000ba1c77bf63660c8429945c806cf2bb03ebca92e07d75c9f3adf",
+        "timestamp": "2026-10-05T06:10:47.407Z",
+        "gatewaySigner": "LabMSP:labtech",
+        "algorithm": "SHA-256"
+      }
+    },
+    "vcap": {
+      "version": "1.0.0",
+      "standard": "VCAP-HL7-FABRIC",
+      "patientRecordHash": "2139a8d592fbde4e3bf71fdf9878b5f41c6eaa7f1d328b5d029becc2fb467e92",
+      "promptHash": "850340acf9e2f4e4f3926539db7efa2e21474209eab1fbcfa1c38caadbd9e6d8",
+      "modelFingerprint": "gemini-2.5-flash",
+      "summaryHash": "2f0f0aca6e000ba1c77bf63660c8429945c806cf2bb03ebca92e07d75c9f3adf",
+      "timestamp": "2026-10-05T06:10:47.407Z",
+      "gatewaySigner": "LabMSP:labtech",
+      "algorithm": "SHA-256"
+    },
+    "ownerOrg": "LabMSP",
+    "updatedByTx": "mock-tx-1791180647408"
+  },
+  "vcap-demo-1791180691665": {
+    "docType": "labResult",
+    "resultId": "vcap-demo-1791180691665",
+    "patientId": "patient-demo-1",
+    "testCode": "CBC-ANEMIA-PANEL",
+    "collectedAt": "2026-10-05T06:11:31.666Z",
+    "status": "FINAL",
+    "resultData": {
+      "storage": "ledger",
+      "metrics": {
+        "hemoglobin": "8.5",
+        "wbc": "9600",
+        "platelets": "220000"
+      },
+      "clinicalInput": {
+        "resultData": {
+          "hemoglobin": "8.5",
+          "wbc": "9600",
+          "platelets": "220000"
+        },
+        "testCode": "CBC-ANEMIA-PANEL",
+        "patientId": "patient-demo-1",
+        "reportText": "Patient shows signs of fatigue. Lab Hemoglobin measured at 8.5 g/dL."
+      },
+      "activePrompt": "You are a clinical lab analysis assistant.\nAnalyze lab result payload and identify possible abnormalities.\nIf reportExtractedText is present, treat it as OCR/text extracted from an uploaded PDF/image lab report and use it as additional context.\nReturn strict JSON with keys:\nsummary (string), abnormalities (array of strings), riskFlags (array of strings), confidence (high|medium|low).\nKeep it concise and non-diagnostic. Mention uncertainty where relevant.\npatientId: patient-demo-1\ntestCode: CBC-ANEMIA-PANEL\nresultData: {\"hemoglobin\":\"8.5\",\"wbc\":\"9600\",\"platelets\":\"220000\"}\nreportTextSource: \nreportExtractedText: Patient shows signs of fatigue. Lab Hemoglobin measured at 8.5 g/dL.",
+      "ai": {
+        "summary": "Possible anemia pattern detected due to low hemoglobin (8.5 g/dL).",
+        "recommendation": "Evaluate iron stores and consider clinical correlation for anemia."
+      },
+      "vcap": {
+        "version": "1.0.0",
+        "standard": "VCAP-HL7-FABRIC",
+        "patientRecordHash": "2139a8d592fbde4e3bf71fdf9878b5f41c6eaa7f1d328b5d029becc2fb467e92",
+        "promptHash": "850340acf9e2f4e4f3926539db7efa2e21474209eab1fbcfa1c38caadbd9e6d8",
+        "modelFingerprint": "gemini-2.5-flash",
+        "summaryHash": "2f0f0aca6e000ba1c77bf63660c8429945c806cf2bb03ebca92e07d75c9f3adf",
+        "timestamp": "2026-10-05T06:11:31.666Z",
+        "gatewaySigner": "LabMSP:labtech",
+        "algorithm": "SHA-256"
+      }
+    },
+    "vcap": {
+      "version": "1.0.0",
+      "standard": "VCAP-HL7-FABRIC",
+      "patientRecordHash": "2139a8d592fbde4e3bf71fdf9878b5f41c6eaa7f1d328b5d029becc2fb467e92",
+      "promptHash": "850340acf9e2f4e4f3926539db7efa2e21474209eab1fbcfa1c38caadbd9e6d8",
+      "modelFingerprint": "gemini-2.5-flash",
+      "summaryHash": "2f0f0aca6e000ba1c77bf63660c8429945c806cf2bb03ebca92e07d75c9f3adf",
+      "timestamp": "2026-10-05T06:11:31.666Z",
+      "gatewaySigner": "LabMSP:labtech",
+      "algorithm": "SHA-256"
+    },
+    "ownerOrg": "LabMSP",
+    "updatedByTx": "mock-tx-1791180691666"
+  },
+  "vcap-demo-1791786125442": {
+    "docType": "labResult",
+    "resultId": "vcap-demo-1791786125442",
+    "patientId": "patient-demo-1",
+    "testCode": "CBC-ANEMIA-PANEL",
+    "collectedAt": "2026-10-12T06:22:05.443Z",
+    "status": "FINAL",
+    "resultData": {
+      "storage": "ledger",
+      "metrics": {
+        "hemoglobin": "8.5",
+        "wbc": "9600",
+        "platelets": "220000"
+      },
+      "clinicalInput": {
+        "resultData": {
+          "hemoglobin": "8.5",
+          "wbc": "9600",
+          "platelets": "220000"
+        },
+        "testCode": "CBC-ANEMIA-PANEL",
+        "patientId": "patient-demo-1",
+        "reportText": "Patient shows signs of fatigue. Lab Hemoglobin measured at 8.5 g/dL."
+      },
+      "activePrompt": "You are a clinical lab analysis assistant.\nAnalyze lab result payload and identify possible abnormalities.\nIf reportExtractedText is present, treat it as OCR/text extracted from an uploaded PDF/image lab report and use it as additional context.\nReturn strict JSON with keys:\nsummary (string), abnormalities (array of strings), riskFlags (array of strings), confidence (high|medium|low).\nKeep it concise and non-diagnostic. Mention uncertainty where relevant.\npatientId: patient-demo-1\ntestCode: CBC-ANEMIA-PANEL\nresultData: {\"hemoglobin\":\"8.5\",\"wbc\":\"9600\",\"platelets\":\"220000\"}\nreportTextSource: \nreportExtractedText: Patient shows signs of fatigue. Lab Hemoglobin measured at 8.5 g/dL.",
+      "ai": {
+        "summary": "Possible anemia pattern detected due to low hemoglobin (8.5 g/dL).",
+        "recommendation": "Evaluate iron stores and consider clinical correlation for anemia."
+      },
+      "vcap": {
+        "version": "1.0.0",
+        "standard": "VCAP-HL7-FABRIC",
+        "patientRecordHash": "2139a8d592fbde4e3bf71fdf9878b5f41c6eaa7f1d328b5d029becc2fb467e92",
+        "promptHash": "850340acf9e2f4e4f3926539db7efa2e21474209eab1fbcfa1c38caadbd9e6d8",
+        "modelFingerprint": "gemini-2.5-flash",
+        "summaryHash": "2f0f0aca6e000ba1c77bf63660c8429945c806cf2bb03ebca92e07d75c9f3adf",
+        "timestamp": "2026-10-12T06:22:05.443Z",
+        "gatewaySigner": "LabMSP:labtech",
+        "algorithm": "SHA-256"
+      }
+    },
+    "vcap": {
+      "version": "1.0.0",
+      "standard": "VCAP-HL7-FABRIC",
+      "patientRecordHash": "2139a8d592fbde4e3bf71fdf9878b5f41c6eaa7f1d328b5d029becc2fb467e92",
+      "promptHash": "850340acf9e2f4e4f3926539db7efa2e21474209eab1fbcfa1c38caadbd9e6d8",
+      "modelFingerprint": "gemini-2.5-flash",
+      "summaryHash": "2f0f0aca6e000ba1c77bf63660c8429945c806cf2bb03ebca92e07d75c9f3adf",
+      "timestamp": "2026-10-12T06:22:05.443Z",
+      "gatewaySigner": "LabMSP:labtech",
+      "algorithm": "SHA-256"
+    },
+    "ownerOrg": "LabMSP",
+    "updatedByTx": "mock-tx-1791786125445"
   }
 }
