@@ -1,0 +1,900 @@
+\documentclass[11pt,a4paper]{article}
+
+% --- Essential Packages ---
+\usepackage[utf8]{inputenc}
+\usepackage[margin=1in]{geometry}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage[hidelinks,colorlinks=true,linkcolor=blue,citecolor=blue,urlcolor=blue]{hyperref}
+
+% --- Typography ---
+\usepackage{helvet}
+\renewcommand{\familydefault}{\sfdefault}
+\usepackage{microtype}
+
+% --- Header and Footer Styling ---
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small \textbf{Secure Blockchain EHR Platform} --- Architecture \& Security}
+\fancyhead[R]{\small Page \thepage}
+\fancyfoot[C]{\footnotesize Technical Architecture Report \& Engineering Specification}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0.5pt}
+
+% --- Colors ---
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.97,0.97,0.97}
+\definecolor{primaryblue}{rgb}{0.08,0.38,0.74}
+\definecolor{darkslate}{rgb}{0.15,0.25,0.35}
+
+% --- Listings Formatting ---
+\lstdefinestyle{codeblock}{
+    backgroundcolor=\color{backcolour},   
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{primaryblue}\bfseries,
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\ttfamily\footnotesize,
+    breakatwhitespace=false,         
+    breaklines=true,                 
+    captionpos=b,                    
+    keepspaces=true,                 
+    numbers=none,                    
+    showspaces=false,                
+    showstringspaces=false,
+    showtabs=false,                  
+    tabsize=2,
+    frame=single,
+    rulecolor=\color{lightgray}
+}
+\lstset{style=codeblock}
+
+% --- Section Heading Formatting ---
+\titleformat{\section}{\color{primaryblue}\Large\bfseries}{\thesection}{1em}{}[\titlerule]
+\titleformat{\subsection}{\color{darkslate}\large\bfseries}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\color{black}\normalsize\bfseries}{\thesubsubsection}{1em}{}
+
+\begin{document}
+
+% =========================================================================
+% COVER PAGE
+% =========================================================================
+\begin{titlepage}
+    \centering
+    \vspace*{1.0cm}
+    
+    {\Huge \textbf{\color{primaryblue}Secure Blockchain Electronic Health Record (EHR) Platform}}\\[0.5cm]
+    {\LARGE \textbf{Enterprise Architecture, Security Design \& Verifiable Clinical AI Specification}}\\[1.2cm]
+    
+    \rule{\linewidth}{1.2pt}\\[0.4cm]
+    {\large \textbf{Project Technical Report \& Engineering Specification}}\\[0.2cm]
+    \rule{\linewidth}{1.2pt}\\[1.2cm]
+    
+    \begin{minipage}[t]{0.45\textwidth}
+        \textbf{\large Prepared \& Developed By:}\\[0.3cm]
+        \textbf{\large Team 2}
+        \begin{itemize}
+            \item Kunal Gautam
+            \item Harshal Shah
+            \item Praful Narang
+        \end{itemize}
+    \end{minipage}
+    \hfill
+    \begin{minipage}[t]{0.45\textwidth}
+        \vspace*{0.75cm}
+        \textbf{\large Team 5}
+        \begin{itemize}
+            \item Krishna Prasad
+            \item Uttam Choudhary
+            \item Lavesh Chandel
+        \end{itemize}
+    \end{minipage}
+    
+    \vfill
+    
+    \begin{minipage}{0.95\textwidth}
+        \centering
+        \textbf{Domain:} Decentralized Healthcare, Distributed Ledger Technology (DLT), Applied Clinical AI\\
+        \textbf{Core Stack:} Hyperledger Fabric v2.x, IPFS, CouchDB, HL7 FHIR R4, Gemini 2.5 Flash, Node.js Microservices\\[0.4cm]
+        \rule{0.6\linewidth}{0.5pt}\\[0.3cm]
+        \small \today
+    \end{minipage}
+\end{titlepage}
+
+% =========================================================================
+% EXECUTIVE OVERVIEW & TABLE OF CONTENTS
+% =========================================================================
+\newpage
+\section*{Executive Overview}
+\addcontentsline{toc}{section}{Executive Overview}
+
+This document specifies the technical architecture, cryptographic security model, cross-organizational data flow, and automated agentic AI pipeline for the \textbf{Secure Blockchain Electronic Health Record (EHR) Platform}. 
+
+The system implements patient-centric sovereign consent governance, Attribute-Based Access Control (ABAC), zero-knowledge off-chain decentralized storage via IPFS, and \textbf{Verifiable Clinical AI Provenance (VCAP)} to provide a tamper-proof, auditable, and privacy-preserving clinical data exchange across Hospitals, Diagnostic Laboratories, Pharmacies, and Insurance Providers.
+
+\vspace{1.5cm}
+\tableofcontents
+
+% =========================================================================
+% SECTION 1: SYSTEM OVERVIEW
+% =========================================================================
+\newpage
+\section{System Overview}
+
+The proposed system is a \textbf{Secure, Intelligent, Observable and Interoperable Electronic Health Record (EHR) Platform} built using Hyperledger Fabric, IPFS, CouchDB, HL7 FHIR and an automated AI analysis layer.
+
+The primary objective is not simply to store healthcare records on a blockchain. Instead, the platform provides a complete trusted environment in which:
+\begin{itemize}
+    \item Healthcare organizations can securely exchange EHR information across decentralized boundaries.
+    \item Access to patient data is controlled using identity, roles, attributes and sovereign consent.
+    \item Sensitive information is kept private through off-chain content-addressed storage.
+    \item Large medical artifacts are stored off-chain in encrypted form.
+    \item AI-generated clinical analysis is automatically triggered upon document ingestion and can be independently verified.
+    \item Blockchain transactions and AI operations are auditable.
+    \item System and AI-agent activity can be monitored through a dashboard.
+    \item Healthcare information follows the interoperable \textbf{HL7 FHIR} data model.
+\end{itemize}
+
+\subsection{Four Operational Pillars}
+\begin{lstlisting}
+                         SECURE BLOCKCHAIN EHR
+                                  |
+             +--------------------+--------------------+
+             |                    |                    |
+             v                    v                    v
+       SECURITY & TRUST       AGENTIC AI          OBSERVABILITY
+             |                    |                    |
+             +--------------------+--------------------+
+                                  |
+                                  v
+                         HL7 FHIR DATA MODEL
+                                  |
+                                  v
+                    +-------------------------+
+                    |   HYPERLEDGER FABRIC    |
+                    |                         |
+                    | Ledger + Chaincode      |
+                    | MSP + Identity          |
+                    | Channel Isolation       |
+                    | Endorsement Policies    |
+                    +------------+------------+
+                                 |
+                    +------------+------------+
+                    v                         v
+               CouchDB                     IPFS
+             State/Indexes          Encrypted Large Files
+\end{lstlisting}
+
+The important design principle is that these components are \textbf{not independent subsystems}. Security, AI, blockchain, storage and observability reinforce each other.
+
+For example, when a laboratory report is created, it is represented using FHIR, automatically analyzed by an AI agent upon upload at the gateway, cryptographically fingerprinted using VCAP, stored as an encrypted artifact in IPFS, and recorded on the Fabric ledger together with its provenance and access events.
+
+% =========================================================================
+% SECTION 2: HIGH-LEVEL ARCHITECTURE
+% =========================================================================
+\newpage
+\section{High-Level Architecture}
+
+The complete system can be viewed as a sequence of decoupled layers.
+
+\begin{lstlisting}
++--------------------------------------------------------------+
+|                    USERS / ORGANIZATIONS                     |
+|                                                              |
+| Doctor | Laboratory | Pharmacy | Hospital | Patient | Admin  |
++------------------------------+-------------------------------+
+                               |
+                               v
++--------------------------------------------------------------+
+|                  APPLICATION / API LAYER                     |
+|                                                              |
+| Authentication | JWT | API Validation | Rate Limiting        |
+| Consent Management | Access Control | FHIR APIs              |
++------------------------------+-------------------------------+
+                               |
+                               v
++--------------------------------------------------------------+
+|                 IDENTITY & SECURITY LAYER                    |
+|                                                              |
+| Fabric CA | X.509 Certificates | MSP | RBAC | ABAC           |
+| Consent | Attribute Validation | Token Revocation            |
++------------------------------+-------------------------------+
+                               |
+                               v
++--------------------------------------------------------------+
+|                       FHIR LAYER                             |
+|                                                              |
+| Patient | Encounter | Observation | DiagnosticReport         |
+| MedicationRequest | Consent | Other FHIR Resources           |
++------------------------------+-------------------------------+
+                               |
+                               v
++--------------------------------------------------------------+
+|                    HYPERLEDGER FABRIC                        |
+|                                                              |
+| Chaincode | Ledger | Endorsement | Channels                  |
+| MSP | Peers | Orderers | Transactions | Audit Events         |
++-----------------------+-------------------+------------------+
+                        |                   |
+                        v                   v
+                  +-----------+       +---------------+
+                  |  CouchDB  |       |     IPFS      |
+                  |           |       |               |
+                  |  State +  |       |   Encrypted   |
+                  |  Indexes  |       | EHR Artifacts |
+                  +-----------+       +-------+-------+
+                                              |
+                                              v
+                                         AES-256-GCM
+                                         Encryption
+
+                         +----------------------+
+                         |      AI LAYER        |
+                         |                      |
+                         | AI Agents            |
+                         | Automated Ingestion  |
+                         | Clinical Analysis    |
+                         | Safety Guardrails    |
+                         +----------+-----------+
+                                    |
+                                    v
+                         +----------------------+
+                         |        VCAP          |
+                         |                      |
+                         | Record Hash          |
+                         | Prompt Hash          |
+                         | Model Fingerprint    |
+                         | Summary Hash         |
+                         | Timestamp            |
+                         | Digital Signer       |
+                         +----------+-----------+
+                                    |
+                                    v
+                              Fabric Ledger
+                                    |
+                                    v
+                         +----------------------+
+                         |     DASHBOARD        |
+                         |                      |
+                         | Network Health       |
+                         | Agent Health         |
+                         | Transactions         |
+                         | Security Events      |
+                         | AI Executions        |
+                         | Audit Trail          |
+                         +----------------------+
+\end{lstlisting}
+
+% =========================================================================
+% SECTION 3: SECURITY AND TRUST ARCHITECTURE
+% =========================================================================
+\newpage
+\section{Security and Trust Architecture}
+
+Security is implemented across the entire system rather than being treated as a single authentication mechanism. The security architecture answers seven fundamental questions:
+
+\begin{table}[htbp]
+\centering
+\small
+\begin{tabular}{@{}llp{8cm}@{}}
+\toprule
+\textbf{Security Component} & \textbf{Question} & \textbf{Platform Implementation} \\ \midrule
+\textbf{Identity} & Who are you? & Multi-Org Fabric CA \& X.509 ECerts \\
+\textbf{Authorization} & What are you allowed to do? & Smart Contract ABAC (\texttt{accessControl.js}) \\
+\textbf{Consent} & Did the patient permit access? & On-Chain Patient Access Contract State \\
+\textbf{Privacy} & Who should see this information? & Zero-PHI On-Chain State + Off-Chain IPFS CIDs \\
+\textbf{Storage Security} & Where and how is data protected? & IPFS Clustered Storage + AES-256-GCM \\
+\textbf{AI Provenance} & What data produced this AI result? & VCAP Cryptographic Fingerprints \\
+\textbf{Audit} & Who did what and when? & Immutable Block History \& Real-time Audit Logs \\ \bottomrule
+\end{tabular}
+\caption{Seven Fundamental Security Dimensions}
+\end{table}
+
+\subsection{Identity Management}
+Every participant must have a verifiable identity. The application layer authenticates users using JWT, while Hyperledger Fabric uses cryptographic identities based on X.509 certificates and Membership Service Providers (MSPs).
+
+\begin{lstlisting}
+             USER
+              |
+              v
+          Login/API
+              |
+              v
+             JWT
+              |
+              v
+       Application Identity
+              |
+              v
+       Fabric Identity
+              |
+        +-----+-----+
+        v           v
+       X.509       MSP
+    Certificate  Organization
+        |           |
+        +-----+-----+
+              v
+        Trusted Fabric
+          Participant
+\end{lstlisting}
+
+For example, a doctor holds attributes embedded in their enrollment certificate: \texttt{DoctorID = DOC123}, \texttt{Role = Doctor}, \texttt{Organization = HospitalA}, \texttt{MSPID = HospitalAMSP}.
+
+\subsection{Authorization: RBAC and ABAC}
+Role-Based Access Control (RBAC) provides baseline role permissions:
+\begin{itemize}
+    \item \textbf{Doctor:} Read EHR (with Consent) [\checkmark], Update clinical data [\checkmark], Read pharmacy stock [$\times$], Modify lab results [$\times$].
+    \item \textbf{Laboratory:} Upload lab report [\checkmark] (Triggers Automated AI), Submit lab result [\checkmark], Read required data [\checkmark], Modify doctor notes [$\times$].
+    \item \textbf{Pharmacy:} Read prescriptions [\checkmark], Update inventory [\checkmark], Dispense medication [\checkmark], Modify lab results [$\times$].
+\end{itemize}
+
+\begin{lstlisting}
+                  ACCESS REQUEST
+                        |
+                        v
+              +-------------------+
+              | Identity          |
+              | Role              |
+              | Organization      |
+              | Patient           |
+              | Requested Action  |
+              | Consent           |
+              +---------+---------+
+                        |
+                        v
+                    ABAC RULES
+                        |
+                  +-----+-----+
+                  v           v
+               ALLOW        DENY
+\end{lstlisting}
+
+The chaincode independently enforces critical authorization rules. Application-level authorization alone is not considered sufficient.
+
+% =========================================================================
+% SECTION 4: PATIENT CONSENT
+% =========================================================================
+\newpage
+\section{Patient Consent}
+
+Patient consent becomes another condition in the access-control decision.
+
+\begin{lstlisting}
+Doctor
+  |
+  | Request access
+  v
+Patient Record
+  |
+  v
+Check Identity
+  |
+  v
+Check Role
+  |
+  v
+Check Organization
+  |
+  v
+Check Consent
+  |
+  +---------------+
+  |               |
+  v               v
+ACTIVE          EXPIRED
+  |               |
+  v               v
+ALLOW            DENY
+\end{lstlisting}
+
+Consent can also be designed to be \textbf{time-bound} or operation-specific. For example:
+
+\begin{lstlisting}
+Doctor DOC123
+Patient PAT001
+Permission = READ
+Start      = 10:00
+End        = 12:00
+\end{lstlisting}
+
+A request at 11:00 is allowed, while the same request at 13:00 is rejected. Consent events are also recorded as auditable blockchain events.
+
+% =========================================================================
+% SECTION 5: DATA PRIVACY AND STORAGE ARCHITECTURE
+% =========================================================================
+\newpage
+\section{Data Privacy and Storage Architecture}
+
+Healthcare information is not placed into a common public blockchain state. The architecture separates information according to sensitivity and size.
+
+\begin{lstlisting}
+                     EHR DATA
+                        |
+             +----------+----------+
+             |                     |
+             v                     v
+         Shared                  Large
+        Metadata               Artifacts
+             |                     |
+             v                     v
+          Fabric                 IPFS
+          Ledger               Encrypted
+          State                 Storage
+\end{lstlisting}
+
+\subsection{Fabric Ledger}
+The shared ledger contains only metadata, cryptographic hashes, and Content Identifiers (CIDs) that organizations need to coordinate.
+
+\begin{lstlisting}[language=json]
+{
+  "resultId": "LAB001",
+  "patientIdHash": "8f4b2a7d23a10e8c6b12d991b5c8f12a3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a",
+  "status": "FINAL",
+  "timestamp": "2026-09-16T10:30:00Z",
+  "dataCID": "bafybeic7x42mpn6u7iynr4l4qgsqd5j26wf5j2l3"
+}
+\end{lstlisting}
+
+Sensitive diagnostic narratives and full patient charts are excluded from public blockchain state keys, ensuring privacy while maintaining data verifiability.
+
+% =========================================================================
+% SECTION 6: ENCRYPTED IPFS STORAGE
+% =========================================================================
+\newpage
+\section{Encrypted IPFS Storage}
+
+Large files such as laboratory PDFs, medical images and other EHR artifacts are stored outside the blockchain.
+
+The recommended flow is:
+
+\begin{lstlisting}
+Medical File
+     |
+     v
+AES-256-GCM Encryption
+     |
+     v
+Encrypted File
+     |
+     v
+IPFS
+     |
+     v
+CID
+     |
+     v
+Fabric
+\end{lstlisting}
+
+Fabric stores the CID and associated metadata rather than the complete large file.
+
+\begin{lstlisting}
+Fabric Record:
+
+ReportID       = LAB001
+CID            = QmABC...
+FileHash       = XYZ...
+Status         = FINAL
+\end{lstlisting}
+
+The actual content remains encrypted in IPFS. Encryption keys are managed separately and securely. Possession of the CID alone does not provide access to the clinical content.
+
+% =========================================================================
+% SECTION 7: VCAP — VERIFIABLE CLINICAL AI PROVENANCE
+% =========================================================================
+\newpage
+\section{VCAP --- Verifiable Clinical AI Provenance}
+
+A major research feature of the proposed architecture is \textbf{Verifiable Clinical AI Provenance (VCAP)}. VCAP provides cryptographic evidence connecting:
+
+\begin{center}
+\textbf{clinical input $\longrightarrow$ AI execution $\longrightarrow$ AI output}
+\end{center}
+
+The objective is to determine whether a particular AI result was generated from a specific version of clinical information using a specific model and configuration.
+
+\subsection{VCAP Flow}
+\begin{lstlisting}
+             CLINICAL RECORD
+                    |
+                    v
+                 SHA-256
+                    |
+                    v
+          patientRecordHash
+                    |
+                    v
+                  AI
+          +---------+---------+
+          |         |         |
+        Prompt    Model    Config
+          |         |         |
+          v         v         v
+        Hash    Fingerprint  Hash
+          |         |         |
+          +---------+---------+
+                    |
+                    v
+                AI OUTPUT
+                    |
+                    v
+                 SHA-256
+                    |
+                    v
+              summaryHash
+                    |
+                    v
+                  VCAP
+                    |
+                    v
+                 Fabric
+\end{lstlisting}
+
+A VCAP record contains:
+\begin{lstlisting}[language=json]
+{
+  "patientRecordHash": "ABC...",
+  "promptHash": "DEF...",
+  "modelFingerprint": "gemini-2.5-flash",
+  "summaryHash": "XYZ...",
+  "timestamp": "2026-09-16T10:30:00Z",
+  "gatewaySigner": "DiagnosticsMSP:labtech"
+}
+\end{lstlisting}
+
+The actual patient data and AI output do not have to be placed directly on the blockchain. Instead, cryptographic hashes provide a mechanism for detecting changes.
+
+\subsection{Why VCAP is Important}
+Consider an original laboratory report ($Hb = 8.5$, $WBC = 9600$) resulting in an AI summary (\textit{"Possible anemia pattern"}). If someone later changes the clinical record ($Hb = 14.5$), the SHA-256 hash changes ($H_A \neq H_B$), immediately detecting the tampering. VCAP provides an additional layer of \textbf{AI accountability and provenance} beyond ordinary blockchain immutability.
+
+% =========================================================================
+% SECTION 8: AI AGENT ARCHITECTURE
+% =========================================================================
+\newpage
+\section{AI Agent Architecture}
+
+The AI layer consumes authorized clinical information and performs tasks such as report analysis, summarization and clinical decision support.
+
+AI analysis is triggered \textbf{automatically upon document ingestion and upload} at the gateway rather than requiring manual doctor prompting.
+
+\begin{lstlisting}
+               LAB REPORT UPLOAD
+                     |
+                     v
+               FHIR Ingestion
+                     |
+                     v
+               Authorization
+                     |
+                     v
+               Consent Check
+                     |
+                     v
+                AI Gateway
+                     |
+             +-------+--------+
+             v                v
+       Clinical Agent    Safety Guardrails
+             |                |
+             v                v
+        AI Analysis       Guardrails
+      (Auto-Triggered)   (Assistive Only)
+             |                |
+             +-------+--------+
+                     v
+                    VCAP
+                     |
+                     v
+                  Fabric
+\end{lstlisting}
+
+The AI layer maintains an execution record containing: input record hash, prompt hash, model fingerprint, configuration, output hash, timestamp, authorized identity, and execution status.
+
+The governance component enforces policies such as:
+\begin{lstlisting}
+AI cannot access patient data
+        unless
+        |
+        |-- Ingestion is authenticated
+        |-- Submitter is authorized
+        \-- Patient consent permits access
+\end{lstlisting}
+
+% =========================================================================
+% SECTION 9: HL7 FHIR INTEROPERABILITY LAYER
+% =========================================================================
+\newpage
+\section{HL7 FHIR Interoperability Layer}
+
+The system uses \textbf{HL7 FHIR} as the standard representation for healthcare information. This allows healthcare data to be represented using standard resources rather than custom formats.
+
+Supported resources include: \texttt{Patient}, \texttt{Observation}, \texttt{DiagnosticReport}, \texttt{MedicationRequest}, \texttt{Encounter}, and \texttt{Consent}.
+
+\begin{lstlisting}
+Hospital System
+      |
+      v
+FHIR Resource
+      |
+      v
+FHIR Validation
+      |
+      v
+Security / Consent
+      |
+      v
+Fabric + IPFS
+\end{lstlisting}
+
+For example, a laboratory measurement can be represented as an \texttt{Observation}, while a complete laboratory report can be represented using a \texttt{DiagnosticReport} with references to relevant observations and supporting artifacts. FHIR forms the interoperability layer between the blockchain infrastructure and external healthcare systems.
+
+% =========================================================================
+% SECTION 10: BLOCKCHAIN TRANSACTION FLOW
+% =========================================================================
+\newpage
+\section{Blockchain Transaction Flow}
+
+A typical transaction passes through the following sequence:
+
+\begin{lstlisting}
+User / Service
+  |
+  v
+Application/API
+  |
+  v
+JWT Authentication
+  |
+  v
+Fabric Identity
+  |
+  v
+ABAC + Consent
+  |
+  +---- DENY ----> Request Rejected
+  |
+  v
+FHIR Validation
+  |
+  v
+Chaincode
+  |
+  v
+Endorsement
+  |
+  v
+Ordering Service
+  |
+  v
+Block
+  |
+  v
+Ledger
+\end{lstlisting}
+
+The ordering service is responsible for ordering valid transactions into a consistent sequence. Peer organizations maintain ledger copies according to the Fabric network configuration.
+
+% =========================================================================
+% SECTION 11: AUDIT AND OBSERVABILITY
+% =========================================================================
+\newpage
+\section{Audit and Observability}
+
+Security is incomplete if the system cannot explain what happened. The platform therefore includes an observability dashboard.
+
+\begin{lstlisting}
+                     DASHBOARD
+                         |
+       +-----------------+------------------+
+       |                 |                  |
+       v                 v                  v
+ Network Health      Security Events    AI Executions
+       |                 |                  |
+       v                 v                  v
+ Peer Status          Login Events       Agent Status
+ Block Height         Access Events      Model Used
+ Channel Status       Consent Events     Execution Time
+ Transaction Rate     Failed Requests    VCAP Status
+\end{lstlisting}
+
+Important audit information includes:
+\begin{lstlisting}
+User / Organization --> Action --> Patient / Resource --> Timestamp --> TxID --> Result
+\end{lstlisting}
+
+For AI operations:
+\begin{lstlisting}
+AI Agent --> Input --> Model --> Prompt --> Output --> Execution Time --> VCAP
+\end{lstlisting}
+
+This allows administrators to investigate suspicious access, failed transactions, unauthorized operations and AI executions.
+
+% =========================================================================
+% SECTION 12: END-TO-END EXAMPLE
+% =========================================================================
+\newpage
+\section{End-to-End Clinical Data Journey Example}
+
+Consider a laboratory report for patient \texttt{PAT001}.
+
+\subsection*{Step 1 --- Report creation and upload}
+The laboratory technician uploads the test results and report file (\texttt{FHIR DiagnosticReport} with \texttt{Observation: Hb = 8.5}).
+
+\subsection*{Step 2 --- Security verification}
+The laboratory identity is verified using its Fabric identity (\texttt{X.509 + MSP} $\rightarrow$ \texttt{ABAC Authorization}).
+
+\subsection*{Step 3 --- Storage}
+The large report is encrypted with AES-256-GCM and stored in IPFS, producing a content-addressed CID. The CID and metadata are recorded on Fabric.
+
+\subsection*{Step 4 --- Automated AI analysis}
+Upon upload completion, the AI analysis pipeline triggers automatically during ingestion. The AI produces: \textit{"Possible anemia pattern."}
+
+\subsection*{Step 5 --- VCAP Provenance}
+The system computes: \texttt{patientRecordHash}, \texttt{promptHash}, \texttt{modelFingerprint}, \texttt{summaryHash}, \texttt{timestamp}, and \texttt{gatewaySigner}.
+
+\subsection*{Step 6 --- Blockchain provenance}
+The VCAP metadata is recorded on Fabric alongside the report metadata.
+\begin{lstlisting}
+                FABRIC
+                  |
+       +----------+----------+
+       |                     |
+   EHR Metadata          AI Provenance
+       |                     |
+       v                     v
+      CID                  VCAP
+       |
+       v
+      IPFS
+\end{lstlisting}
+
+\subsection*{Step 7 --- Monitoring}
+The dashboard records the complete end-to-end operation, allowing the attending physician to review the verified report and AI summary.
+
+% =========================================================================
+% SECTION 13: FINAL ARCHITECTURE
+% =========================================================================
+\newpage
+\section{Final Architecture}
+
+The complete architecture of the secure EHR platform is summarized below:
+
+\begin{lstlisting}
+                         +---------------------+
+                         |        USERS        |
+                         | Doctor | Lab | etc. |
+                         +----------+----------+
+                                    |
+                                    v
+                         +---------------------+
+                         |  AUTHENTICATION     |
+                         |      JWT / API      |
+                         +----------+----------+
+                                    |
+                                    v
+                         +---------------------+
+                         | IDENTITY & ACCESS   |
+                         | CA | X.509 | MSP    |
+                         | RBAC | ABAC         |
+                         | Consent             |
+                         +----------+----------+
+                                    |
+                                    v
+                         +---------------------+
+                         |      HL7 FHIR       |
+                         | Patient             |
+                         | Observation         |
+                         | DiagnosticReport    |
+                         | MedicationRequest   |
+                         | Consent             |
+                         +----------+----------+
+                                    |
+                                    v
+                 +----------------------------------+
+                 |       HYPERLEDGER FABRIC         |
+                 |                                  |
+                 | Chaincode | Channels             |
+                 | Endorsement | Peers | Orderers   |
+                 | Ledger | Audit                   |
+                 +---------------+------------------+
+                                 |
+                   +-------------+-------------+
+                   |                           |
+                   v                           v
+          +-----------------+          +-----------------+
+          |    CouchDB      |          |      IPFS       |
+          | State / Indexes |          | Encrypted EHR   |
+          +-----------------+          | Artifacts       |
+                                       +--------+--------+
+                                                |
+                                                v
+                                           AES-256-GCM
+
+                                 +---------------------+
+                                 |      AI LAYER       |
+                                 | (Automated Ingest)  |
+                                 | Clinical Agents     |
+                                 | Safety Guardrails   |
+                                 +----------+----------+
+                                            |
+                                            v
+                                 +---------------------+
+                                 |       VCAP          |
+                                 |                     |
+                                 | Record Hash         |
+                                 | Prompt Hash         |
+                                 | Model Fingerprint   |
+                                 | Summary Hash        |
+                                 | Timestamp           |
+                                 | Digital Signer      |
+                                 +----------+----------+
+                                            |
+                                            v
+                                      Fabric Ledger
+                                            |
+                                            v
+                                 +---------------------+
+                                 |     DASHBOARD       |
+                                 |                     |
+                                 | Security            |
+                                 | AI Agents           |
+                                 | Transactions        |
+                                 | Audit               |
+                                 | Network Health      |
+                                 +---------------------+
+\end{lstlisting}
+
+% =========================================================================
+% SECTION 14: SECURITY DESIGN PRINCIPLES
+% =========================================================================
+\newpage
+\section{Security Design Principles}
+
+The architecture follows ten fundamental security principles:
+\begin{enumerate}
+    \item \textbf{Never trust the application layer alone:} Critical authorization should also be enforced by Fabric chaincode.
+    \item \textbf{Minimize on-chain sensitive data:} Store proofs and necessary metadata on Fabric rather than complete medical documents.
+    \item \textbf{Encrypt off-chain clinical artifacts:} IPFS provides content-addressed storage but does not replace encryption and access control.
+    \item \textbf{Use organizational channel isolation:} Channels isolate enterprise transactions according to organizational privacy requirements.
+    \item \textbf{Treat AI as an automated, controlled participant:} AI agents trigger automatically upon ingestion and must operate under identity, authorization, consent and governance policies.
+    \item \textbf{Make AI operations verifiable:} VCAP connects the clinical input, AI configuration and output using cryptographic fingerprints.
+    \item \textbf{Record important events:} Access, consent, transactions and AI executions should generate auditable records.
+    \item \textbf{Design for interoperability:} HL7 FHIR provides a standard representation for healthcare information.
+    \item \textbf{Separate data, proof and access:} The actual clinical artifact, its cryptographic proof and its access permissions should be treated as different architectural concerns.
+    \item \textbf{Ensure least-privilege credential partitioning:} Microservices isolate private keys by role and organization to minimize the attack surface.
+\end{enumerate}
+
+% =========================================================================
+% SECTION 15: SECURITY ROADMAP AND HARDENING
+% =========================================================================
+\newpage
+\section{Security Roadmap and Hardening}
+
+\subsection{Current Security Implementation Tasks (What We Are Planning to Do Now)}
+\begin{itemize}
+    \item \textbf{Client-Side \texttt{AES-256-GCM} Encryption for IPFS:} Implement symmetric payload encryption before pinning files to IPFS so that no plaintext medical data is exposed on off-chain storage nodes.
+    \item \textbf{Smart Contract ABAC Enforcement:} Enforce Attribute-Based Access Control inside Fabric chaincode using X.509 certificate attributes (\texttt{role}, \texttt{organization}, \texttt{patientId}) rather than relying solely on application-level checks.
+    \item \textbf{Patient Sovereign Consent Verification:} Implement chaincode-level consent checks (\texttt{accessContract.js}) requiring active patient permission before clinicians can retrieve IPFS record pointers (CIDs).
+    \item \textbf{VCAP Cryptographic Hashing at Ingestion:} Generate SHA-256 digests for raw patient records, prompts, model fingerprints, and AI outputs, anchoring them immutably to the Fabric ledger.
+    \item \textbf{Zero-PHI On-Chain State Minimization:} Restrict shared blockchain ledger state to cryptographic hashes, CIDs, and state transitions, excluding sensitive diagnostic narratives.
+\end{itemize}
+
+\subsection{Future Security Hardening Plans (Plans to Make the System Securer)}
+\begin{itemize}
+    \item \textbf{On-Chain VCAP Tamper Verification:} Add a dedicated smart contract function to recompute and mathematically verify retrieved AI summaries against on-chain SHA-256 hashes, raising automated alerts if tampering occurs.
+    \item \textbf{Strict On-Chain Time-Bound Consent Expiry:} Enforce transaction timestamp checks (\texttt{getTxTimestamp() < expiresAt}) inside chaincode to automatically invalidate expired consent grants without manual revocation.
+    \item \textbf{Decoupled Key Management for IPFS Payloads:} Implement isolated encryption key management so that possessing an IPFS CID alone never grants access to decrypted clinical content.
+    \item \textbf{Identity Token Revocation \& Certificate Lifecycle:} Integrate token revocation and certificate validation across Fabric CAs and API gateways to immediately block compromised identities.
+    \item \textbf{Immutable Security Audit Trail:} Log every access request, consent state modification, failed authorization attempt, and AI execution to the immutable blockchain audit log.
+    \item \textbf{Channel-Based Network Isolation:} Partition multi-organization communications across dedicated Fabric channels to enforce strict network-level transaction isolation.
+\end{itemize}
+
+\end{document}
