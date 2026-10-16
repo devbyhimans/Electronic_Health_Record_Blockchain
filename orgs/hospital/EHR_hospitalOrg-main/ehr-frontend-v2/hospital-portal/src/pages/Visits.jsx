@@ -249,7 +249,7 @@ function AssignModal({ title, field, placeholder, onClose, onSubmit }) {
   useEffect(() => {
     const fetchStaff = async () => {
       try {
-        const res = await fetch('http://localhost:3001/auth/users', { headers: { Authorization: `Bearer ${token}` } })
+        const res = await fetch('/api/hospital/peer0/auth/users', { headers: { Authorization: `Bearer ${token}` } })
         const data = await res.json()
         const targetRole = title.toLowerCase().includes('doctor') ? 'doctor' : 'nurse'
         const matches = data.data.filter(s => s.role === targetRole)
