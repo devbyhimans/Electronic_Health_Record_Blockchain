@@ -1,12 +1,13 @@
 'use strict';
 
 const path = require('path');
+const fs   = require('fs');
 
-const _base = process.env.FABRIC_BASE_PATH
-  ? path.isAbsolute(process.env.FABRIC_BASE_PATH)
-    ? process.env.FABRIC_BASE_PATH
-    : path.resolve(process.cwd(), process.env.FABRIC_BASE_PATH)
-  : path.resolve(__dirname, '../../../..');
+const _base = (process.env.FABRIC_BASE_PATH && fs.existsSync(process.env.FABRIC_BASE_PATH))
+  ? (path.isAbsolute(process.env.FABRIC_BASE_PATH)
+      ? process.env.FABRIC_BASE_PATH
+      : path.resolve(process.cwd(), process.env.FABRIC_BASE_PATH))
+  : path.resolve(__dirname, '../../../../ehr-network');
 
 // ── Diagnostics org ───────────────────────────────────────────
 const DIAG_USERS = path.join(_base, 'organizations/peerOrganizations/diagnostic.example.com/users');

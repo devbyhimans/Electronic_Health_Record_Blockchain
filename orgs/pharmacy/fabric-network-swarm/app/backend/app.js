@@ -32,7 +32,10 @@ const PC1_IP = "100.124.176.94"; // Manager PC (This machine)
 const ccpPath = path.resolve(__dirname, 'connection.json');
 let ccp = {};
 try {
-    ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
+    let raw = fs.readFileSync(ccpPath, 'utf8');
+    const cryptoConfigDir = path.resolve(__dirname, '../../crypto-config');
+    raw = raw.replace(/\"path\":\s*\"[^\"]*\/crypto-config\//g, `"path": "${cryptoConfigDir}/`);
+    ccp = JSON.parse(raw);
 } catch (e) {
     console.error("Connection profile NOT FOUND at", ccpPath);
 }

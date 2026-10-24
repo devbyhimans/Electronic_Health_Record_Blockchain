@@ -11,7 +11,8 @@ async function main() {
         const ccp = JSON.parse(fs.readFileSync(ccpPath, 'utf8'));
 
         const caInfo = ccp.certificateAuthorities['ca.org1.example.com'];
-        const caTLSCACerts = fs.readFileSync(caInfo.tlsCACerts.path);
+        const caCertPath = path.isAbsolute(caInfo.tlsCACerts.path) ? caInfo.tlsCACerts.path : path.resolve(__dirname, '../../', caInfo.tlsCACerts.path.replace(/^orgs\/pharmacy\/fabric-network-swarm\//, ''));
+        const caTLSCACerts = fs.readFileSync(caCertPath);
         const ca = new FabricCAServices(caInfo.url, { trustedRoots: caTLSCACerts, verify: false }, caInfo.caName);
 
         const walletPath = path.join(process.cwd(), 'wallet');

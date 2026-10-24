@@ -56,7 +56,7 @@ peer_cmd() {
   local TLS_CERT=$4
   shift 4
 
-  FABRIC_CFG_PATH=${HOME}/Data/fabric-samples/config \
+  FABRIC_CFG_PATH="${PWD}/configtx" \
   CORE_PEER_TLS_ENABLED=true \
   CORE_PEER_LOCALMSPID=$MSP_ID \
   CORE_PEER_ADDRESS=$PEER_ADDRESS \

@@ -1,16 +1,16 @@
 import axios from 'axios'
 
 const ROLE_APIS = {
-  receptionist:     'http://localhost:4001',
-  admin:            'http://localhost:4001',
-  doctor:           'http://localhost:4002',
-  nurse:            'http://localhost:4003',
-  pharmacist:       'http://localhost:4003',
-  medrecordofficer: 'http://localhost:4003',
+  receptionist:     '/api/hospital/peer0',
+  admin:            '/api/hospital/peer0',
+  doctor:           '/api/hospital/peer1',
+  nurse:            '/api/hospital/peer2',
+  pharmacist:       '/api/hospital/peer2',
+  medrecordofficer: '/api/hospital/peer2',
 }
 
 export function getApiBase(role) {
-  return ROLE_APIS[role] || 'http://localhost:4001'
+  return ROLE_APIS[role] || '/api/hospital/peer0'
 }
 
 export function createApiClient(token, role) {
@@ -22,9 +22,9 @@ export function createApiClient(token, role) {
 
 export async function loginUser(username, password) {
   const apis = [
-    'http://localhost:4001',
-    'http://localhost:4002',
-    'http://localhost:4003',
+    '/api/hospital/peer0',
+    '/api/hospital/peer1',
+    '/api/hospital/peer2',
   ]
   for (const base of apis) {
     try {

@@ -3,7 +3,7 @@ import { Package, Activity, Search, RefreshCw, Plus, Minus, AlertTriangle, Shiel
 import { motion, AnimatePresence } from 'framer-motion';
 import './styles.css';
 
-const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://100.124.176.94:3000';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/pharmacy';
 
 const api = async (path, opts = {}) => {
   const res = await fetch(`${API_BASE_URL}${path}`, opts);

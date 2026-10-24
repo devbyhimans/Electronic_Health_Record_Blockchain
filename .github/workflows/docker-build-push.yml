@@ -1,0 +1,100 @@
+name: Build & Push Docker Images to GHCR
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "**/package.json"
+      - "**/Dockerfile"
+      - "docker-compose.yaml"
+
+jobs:
+  build-and-push:
+    name: Build ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write   # needed to push to GHCR
+
+    strategy:
+      fail-fast: false  # build all images even if one fails
+      matrix:
+        include:
+          # ── Hospital Backends ──────────────────────────────
+          - name: ehr-h-ipfs-service
+            context: orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/ipfs-service
+
+          - name: ehr-h-peer0-api
+            context: orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/peer0-api
+
+          - name: ehr-h-peer1-api
+            context: orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/peer1-api
+
+          - name: ehr-h-peer2-api
+            context: orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/peer2-api
+
+          - name: ehr-h-extorg-api
+            context: orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/extorg-api
+
+          - name: ehr-h-patient-api
+            context: orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/patient-api
+
+          # ── Hospital Frontends ────────────────────────────
+          - name: ehr-h-hospital-portal
+            context: orgs/hospital/EHR_hospitalOrg-main/ehr-frontend-v2/hospital-portal
+
+          - name: ehr-h-patient-portal
+            context: orgs/hospital/EHR_hospitalOrg-main/ehr-frontend-v2/patient-portal
+
+          # ── Pharmacy ──────────────────────────────────────
+          - name: ehr-p-backend
+            context: orgs/pharmacy/fabric-network-swarm/app/backend
+
+          - name: ehr-p-manager
+            context: orgs/pharmacy/fabric-network-swarm/app/manager
+
+          - name: ehr-p-employee
+            context: orgs/pharmacy/fabric-network-swarm/app/employee
+
+          - name: ehr-p-inventory
+            context: orgs/pharmacy/fabric-network-swarm/app/inventory
+
+          - name: ehr-p-patient
+            context: orgs/pharmacy/fabric-network-swarm/app/patient
+
+          - name: ehr-p-billing
+            context: orgs/pharmacy/fabric-network-swarm/app/billing
+
+          - name: ehr-p-frontend
+            context: orgs/pharmacy/fabric-network-swarm/app/frontend
+
+          # ── Lab ───────────────────────────────────────────
+          - name: ehr-l-node-gateway
+            context: orgs/lab/EHR-LABORG-main/client/node-gateway
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}   # auto-provided, no setup needed
+
+      - name: Set up Docker Buildx (faster multi-platform builds)
+        uses: docker/setup-buildx-action@v3
+
+      - name: Lowercase repository owner
+        id: repo-owner
+        run: echo "owner=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
+
+      - name: Build and push ${{ matrix.name }}
+        uses: docker/build-push-action@v5
+        with:
+          context: ${{ matrix.context }}
+          push: true
+          tags: ghcr.io/${{ steps.repo-owner.outputs.owner }}/${{ matrix.name }}:latest
+          cache-from: type=gha,scope=${{ matrix.name }}   # reuse cache between runs
+          cache-to:   type=gha,scope=${{ matrix.name }},mode=max

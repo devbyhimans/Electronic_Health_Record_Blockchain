@@ -78,7 +78,7 @@ done
 # ============================================================
 
 CONFIGTX_PATH=${PWD}/configtx
-PEER_CFG_PATH=${HOME}/Data/fabric-samples/config
+PEER_CFG_PATH="${PWD}/configtx"
 ORDERER_TLS_DIR=${TEST_NETWORK_HOME}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls
 
 [ ! -d "channel-artifacts" ] && mkdir -p channel-artifacts

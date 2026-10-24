@@ -58,6 +58,10 @@ BASE_DIR=$(cd "$(dirname "$0")/.." && pwd)
 DOCKER_DIR="$BASE_DIR/docker"
 SCRIPTS_DIR="$BASE_DIR/scripts"
 ORGANIZATIONS="$BASE_DIR/organizations"
+REPO_ROOT="$(cd "$BASE_DIR/../../../.." && pwd)"
+if [ -d "$REPO_ROOT/bin" ]; then
+  export PATH="$REPO_ROOT/bin:$PATH"
+fi
 
 # ============================================================
 # PARSE ARGUMENTS
@@ -145,6 +149,9 @@ start_cas() {
     success "ehr_network already exists — reusing"
   fi
 
+  # Clean up stale crypto to prevent CA Error 71
+  rm -rf "$ORGANIZATIONS/ordererOrganizations" "$ORGANIZATIONS/peerOrganizations"
+
   # Create CA directories if missing (needed for volume mounts)
   mkdir -p "$ORGANIZATIONS/ordererOrganizations/example.com/ca"
   mkdir -p "$ORGANIZATIONS/peerOrganizations/hospital.example.com/ca"
@@ -156,7 +163,7 @@ start_cas() {
 
   log "Waiting for CAs to initialize and generate certs..."
   local WAITED=0
-  local MAX_WAIT=30
+  local MAX_WAIT=90
 
   while [ $WAITED -lt $MAX_WAIT ]; do
     # Check all 4 CA certs exist
@@ -285,7 +292,8 @@ start_network() {
     curl -s -X POST \
       "http://localhost:5001/api/v0/config?arg=API.HTTPHeaders.Access-Control-Allow-Methods&arg=[\"PUT\",\"POST\",\"GET\"]&json=true" \
       --output /dev/null 2>/dev/null || true
-    success "IPFS CORS configured"
+    docker exec ipfs.ehr.local ipfs config --json Gateway.PublicGateways '{"localhost": {"UseSubdomains": false, "Paths": ["/ipfs", "/ipns"]}}' >/dev/null 2>&1 || true
+    success "IPFS CORS and Gateway path routing configured"
   fi
 
   success "All network containers running"
@@ -321,7 +329,7 @@ set_anchor_peers() {
 
   cd "$BASE_DIR"
 
-  export FABRIC_CFG_PATH=${HOME}/Data/fabric-samples/config
+  export FABRIC_CFG_PATH="${BASE_DIR}/configtx"
   export TEST_NETWORK_HOME="$BASE_DIR"
   . "$SCRIPTS_DIR/utils.sh"
   . "$SCRIPTS_DIR/envVar.sh"

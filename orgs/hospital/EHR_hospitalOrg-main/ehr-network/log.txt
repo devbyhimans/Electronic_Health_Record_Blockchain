@@ -1,1 +1,0 @@
-[31m2026-09-27 08:18:56.705 UTC 0001 ERRO[0m [main] [31;1mInitCmd[0m -> Fatal error when initializing core config : FABRIC_CFG_PATH /home/harsh1609/Data/fabric-samples/config does not exist

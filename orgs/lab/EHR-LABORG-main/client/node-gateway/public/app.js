@@ -31,7 +31,9 @@ function selectedPeer() {
 }
 
 function withPeer(path) {
-  const url = new URL(path, window.location.origin);
+  // Handle paths when accessed through Nginx at /lab/
+  const base = window.location.pathname.startsWith('/lab') ? '/lab' : '';
+  const url = new URL(base + path, window.location.origin);
   const peer = selectedPeer();
   if (peer) {
     url.searchParams.set('peer', peer);

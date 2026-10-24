@@ -2,7 +2,7 @@
 set -euo pipefail
 
 source "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/common.sh"
-load_env "env/machine1.env"
+
 ensure_colima
 wait_for_docker
 require_fabric_binaries

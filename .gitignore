@@ -6,3 +6,40 @@
 !*.env.example
 
 **/node_modules/
+**/package-lock.json
+!bin/
+!config/
+
+# Build output
+**/dist/
+**/build/
+
+# Logs
+*.log
+**/logs/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Data / runtime
+**/data/
+*.db
+*.db-shm
+*.db-wal
+
+# Large files that shouldn't be tracked
+*.pdf
+*.mp4
+*.webm
+*.pptx
+repomix-output.xml
+base work/
+**/log.txt
+.pids/

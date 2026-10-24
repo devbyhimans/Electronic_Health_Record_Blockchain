@@ -319,6 +319,17 @@ app.post('/api/records/ipfs', uploadReportFile.single('reportFile'), async (req,
     const parsedResultData = hasResultData ? parseJsonField(req.body.resultData, 'resultData') : null;
     const resultId = trimmedField(req.body.resultId);
     const peerName = selectedPeer(req);
+
+    // Respond early to prevent HTTP timeouts
+    res.status(202).json({
+      status: 'processing',
+      resultId,
+      message: 'Upload received and is processing in the background.'
+    });
+
+    // Run heavy IPFS/OCR processing in background
+    (async () => {
+      try {
     const runAiAgents = parseBooleanValue(req.body.runAiAgents, true);
 
     const warnings = [];
@@ -469,16 +480,11 @@ app.post('/api/records/ipfs', uploadReportFile.single('reportFile'), async (req,
       { peerName }
     );
 
-    res.status(201).json({
-      ...response,
-      ipfs: ipfsPayload,
-      reportFileIpfs,
-      extractedTextChars: extractedReportText.length,
-      extractedTextPreview: extractedReportText.slice(0, 500),
-      ai,
-      aiIpfs,
-      warnings,
-    });
+    console.log(`Background processing completed for resultId ${resultId}`);
+      } catch (bgError) {
+        console.error(`Background processing failed for resultId ${resultId}:`, bgError);
+      }
+    })();
   } catch (error) {
     next(error);
   }

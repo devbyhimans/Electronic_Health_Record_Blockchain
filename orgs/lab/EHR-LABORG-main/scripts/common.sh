@@ -21,15 +21,8 @@ load_env() {
 }
 
 ensure_colima() {
-  if ! colima status >/dev/null 2>&1; then
-    colima start --cpu 4 --memory 8 --disk 60
-  fi
-  if docker context ls --format '{{.Name}} {{.Current}}' | awk '$2=="true"{print $1}' | grep -qx 'colima'; then
-    return
-  fi
-  if docker context ls --format '{{.Name}}' | grep -qx 'colima'; then
-    docker context use colima >/dev/null
-  fi
+  # Skip colima check on WSL/Linux
+  return 0
 }
 
 ensure_linux_docker() {
@@ -38,12 +31,12 @@ ensure_linux_docker() {
     exit 1
   fi
 
-  if command -v systemctl >/dev/null 2>&1; then
-    if ! systemctl is-active --quiet docker; then
-      echo "Docker service is not running. Start it with: sudo systemctl enable --now docker"
-      exit 1
-    fi
-  fi
+  # if command -v systemctl >/dev/null 2>&1; then
+  #   if ! systemctl is-active --quiet docker; then
+  #     echo "Docker service is not running. Start it with: sudo systemctl enable --now docker"
+  #     exit 1
+  #   fi
+  # fi
 }
 
 ensure_container_runtime() {
@@ -63,8 +56,8 @@ ensure_container_runtime() {
 
 require_fabric_binaries() {
   if [[ ! -x "${FABRIC_BIN_DIR}/cryptogen" || ! -x "${FABRIC_BIN_DIR}/configtxgen" || ! -x "${FABRIC_BIN_DIR}/peer" ]]; then
-    echo "Fabric binaries are missing. Run ./scripts/download-fabric.sh first."
-    exit 1
+    echo "Fabric binaries are missing. Auto-executing download-fabric.sh..."
+    bash "${ROOT_DIR}/scripts/download-fabric.sh" || { echo "Failed to download Fabric binaries."; exit 1; }
   fi
   export PATH="${FABRIC_BIN_DIR}:${PATH}"
 }

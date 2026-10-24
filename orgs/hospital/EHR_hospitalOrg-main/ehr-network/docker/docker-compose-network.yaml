@@ -277,7 +277,7 @@ services:
       - ipfs_data:/data/ipfs
       - ipfs_export:/export
     ports:
-      - "4001:4001"   # swarm
+      - "4021:4001"   # swarm
       - "5001:5001"   # API
       - "8090:8080"   # HTTP gateway
     networks:

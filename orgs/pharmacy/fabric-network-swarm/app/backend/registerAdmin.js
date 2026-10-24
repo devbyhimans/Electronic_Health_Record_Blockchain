@@ -4,7 +4,7 @@ const { Wallets } = require('fabric-network');
 const fs = require('fs');
 const path = require('path');
 
-const mspPath = '/home/ankit/fabric-network/crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp';
+const mspPath = process.env.MSP_PATH || path.resolve(__dirname, '../../crypto-config/peerOrganizations/org1.example.com/users/Admin@org1.example.com/msp');
 const certPath = path.join(mspPath, 'signcerts', 'Admin@org1.example.com-cert.pem');
 const keyDirectoryPath = path.join(mspPath, 'keystore');
 

@@ -16,6 +16,13 @@
 export TEST_NETWORK_HOME=$(pwd)
 export CORE_PEER_TLS_ENABLED=true
 
+# Ensure Fabric binaries are in PATH
+_ENV_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+_REPO_ROOT="$(cd "${_ENV_DIR}/../../../.." && pwd)"
+if [ -d "${_REPO_ROOT}/bin" ]; then
+  export PATH="${_REPO_ROOT}/bin:${PATH}"
+fi
+
 # ── Orderer ──────────────────────────────────────────────────
 export ORDERER_CA=${TEST_NETWORK_HOME}/organizations/ordererOrganizations/example.com/ca/ca-cert.pem
 export ORDERER_TLS_CA=${TEST_NETWORK_HOME}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/tlscacerts/tls-localhost-7054-ca-orderer.pem

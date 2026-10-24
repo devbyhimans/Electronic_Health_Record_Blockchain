@@ -38,6 +38,10 @@ if [ ! -d "$BASE_DIR/organizations" ] || [ ! -d "$BASE_DIR/configtx" ]; then
 fi
 
 ORGANIZATIONS="$BASE_DIR/organizations"
+REPO_ROOT="$(cd "$BASE_DIR/../../../.." && pwd)"
+if [ -d "$REPO_ROOT/bin" ]; then
+  export PATH="$REPO_ROOT/bin:$PATH"
+fi
 export FABRIC_CFG_PATH="${BASE_DIR}/configtx"
 export CORE_PEER_TLS_ENABLED=true
 

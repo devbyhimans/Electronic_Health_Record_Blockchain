@@ -14,7 +14,7 @@ set -euo pipefail
 # --- CONFIGURATION ------------------------------------------------------------
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 SCRIPTS_DIR="$ROOT_DIR/scripts"
-COMPOSE_DIR="$ROOT_DIR/compose"
+COMPOSE_DIR="$ROOT_DIR/../../hospital/EHR_hospitalOrg-main/ehr-network/docker"
 RUNTIME_DIR="$ROOT_DIR/runtime"
 
 if [ -f "$ROOT_DIR/deploy.env" ]; then
@@ -210,7 +210,7 @@ log "STEP 4a: Packaging chaincode (must exist before peer stacks deploy)"
 docker pull hyperledger/fabric-nodeenv:2.5 2>/dev/null || warn "fabric-nodeenv pull failed - may cause slow first install"
 
 peer lifecycle chaincode package "$CC_PACKAGE" \
-    --path "$ROOT_DIR/chaincode/ehr" \
+    --path "$ROOT_DIR/../../hospital/EHR_hospitalOrg-main/ehr-chaincode-v3" \
     --lang node \
     --label "$CC_LABEL"
 # Also place it at the unversioned path that stack-peer*.yaml bind-mounts
@@ -219,8 +219,8 @@ ok "Chaincode packaged → $(basename "$CC_PACKAGE") and ehr.tar.gz"
 
 # -- 4b: Deploy CA and Orderer -----------------------------------------
 log "STEP 4b: Deploying CA and Orderer"
-docker stack deploy -c "$COMPOSE_DIR/stack-ca.yaml"      ehrswarm-ca
-docker stack deploy -c "$COMPOSE_DIR/stack-orderer.yaml" ehrswarm-orderer
+docker stack deploy -c "$COMPOSE_DIR/docker-compose-ca.yaml"      ehrswarm-ca
+docker stack deploy -c "$COMPOSE_DIR/docker-compose-network.yaml" ehrswarm-orderer
 echo "  Waiting 30s for orderer to initialize..."
 sleep 30
 
@@ -272,9 +272,9 @@ ok "Worker sync complete."
 
 
 # -- 4e: Now deploy peer stacks - all bind-mount sources exist on every node --
-docker stack deploy -c "$COMPOSE_DIR/stack-peer0.yaml" ehrswarm-peer0
-docker stack deploy -c "$COMPOSE_DIR/stack-peer1.yaml" ehrswarm-peer1
-docker stack deploy -c "$COMPOSE_DIR/stack-peer2.yaml" ehrswarm-peer2
+docker stack deploy -c "$COMPOSE_DIR/docker-compose-network.yaml" ehrswarm-peer0
+docker stack deploy -c "$COMPOSE_DIR/docker-compose-network.yaml" ehrswarm-peer1
+docker stack deploy -c "$COMPOSE_DIR/docker-compose-network.yaml" ehrswarm-peer2
 
 # --- STEP 6: JOIN CHANNEL ----------------------------------------------------
 log "STEP 6: Joining peers to channel"

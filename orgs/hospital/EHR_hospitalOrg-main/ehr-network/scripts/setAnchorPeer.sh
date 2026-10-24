@@ -29,7 +29,7 @@ fi
 setGlobals $ORG
 
 # ── Set FABRIC_CFG_PATH so peer binary can find core.yaml ─────
-export FABRIC_CFG_PATH=${HOME}/Data/fabric-samples/config
+export FABRIC_CFG_PATH="${SCRIPT_DIR}/../configtx"
 
 # ── Resolve host/port and MSP ID for this org ─────────────────
 if [ $ORG -eq 1 ]; then

@@ -4,7 +4,7 @@ import { useAuth } from '../context/AuthContext'
 import axios from 'axios'
 import { Button, Card, Input } from '../components/ui'
 
-const API_URL = 'http://localhost:3001'
+const API_URL = '/api/hospital/peer0'
 
 export default function Staff() {
   const { user, token } = useAuth()
