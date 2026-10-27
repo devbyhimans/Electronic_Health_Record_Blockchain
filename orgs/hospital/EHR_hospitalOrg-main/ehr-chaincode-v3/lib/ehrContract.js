@@ -76,6 +76,7 @@ class EhrContract extends Contract {
   //               'immunizations' | 'emergencyContact' | 'demographics' | 'all')
   //   reason    - short human-readable note  (optional)
   async UpdateEHRCID(ctx, patientId, newCID, section, reason) {
+    requireRole(ctx, 'doctor');
     const { userId } = await assertEHRWriteAccess(ctx, patientId);
 
     if (!patientId || !newCID) {

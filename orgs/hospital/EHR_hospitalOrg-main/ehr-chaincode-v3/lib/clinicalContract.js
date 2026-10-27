@@ -129,6 +129,12 @@ class ClinicalContract extends Contract {
     await putState(ctx, visitKey(visitId), visit);
     return JSON.stringify(visit);
   }
+
+  // ── DispensePrescription (alias for DispenseMedication) ────────────────────
+  async DispensePrescription(ctx, visitId, visitCID) {
+    requireRole(ctx, 'pharmacist');
+    return this.DispenseMedication(ctx, visitId, visitCID);
+  }
 }
 
 module.exports = { ClinicalContract };

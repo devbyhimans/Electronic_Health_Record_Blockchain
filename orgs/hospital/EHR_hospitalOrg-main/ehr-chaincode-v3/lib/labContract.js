@@ -52,7 +52,7 @@ class LabContract extends Contract {
   // Lab technician submits test results.
   // visitCID: IPFS JSON updated with results + resultsHash + status = 'COMPLETED'.
   async SubmitLabResult(ctx, visitId, labRequestId, visitCID) {
-    const { userId } = requireRole(ctx, 'labtechnician', 'radiologist', 'labadmin');
+    const { userId } = requireRole(ctx, 'labtech');
 
     const visit = await getState(ctx, visitKey(visitId));
     if (!visit) throw new Error(`Visit not found: ${visitId}`);
@@ -67,6 +67,12 @@ class LabContract extends Contract {
 
     await putState(ctx, visitKey(visitId), visit);
     return JSON.stringify(visit);
+  }
+
+  // ── CreateLabResult (alias for SubmitLabResult) ───────────────────────────
+  async CreateLabResult(ctx, visitId, labRequestId, visitCID) {
+    requireRole(ctx, 'labtech');
+    return this.SubmitLabResult(ctx, visitId, labRequestId, visitCID);
   }
 
   // ── ApproveLabResult ──────────────────────────────────────────────────────

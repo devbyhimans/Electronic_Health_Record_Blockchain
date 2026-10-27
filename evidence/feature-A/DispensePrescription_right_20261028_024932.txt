@@ -1,0 +1,2 @@
+--- Right identity (pharmacist) output ---
+scripts/test-abac.sh: line 33: peer: command not found

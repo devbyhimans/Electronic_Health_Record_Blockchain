@@ -1,1 +1,2 @@
-[31m2026-09-27 22:52:40.144 UTC 0001 ERRO[0m [main] [31;1mInitCmd[0m -> Fatal error when initializing core config : FABRIC_CFG_PATH /home/himanshu/Data/fabric-samples/config does not exist
+[34m2026-10-28 02:35:19.321 IST 0001 INFO[0m [channelCmd] [34;1mInitCmdFactory[0m -> Endorser and orderer connections initialized
+[34m2026-10-28 02:35:19.349 IST 0002 INFO[0m [channelCmd] [34;1mexecuteJoin[0m -> Successfully submitted proposal to join channel

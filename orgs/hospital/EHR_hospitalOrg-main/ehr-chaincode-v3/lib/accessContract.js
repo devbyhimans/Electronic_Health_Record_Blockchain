@@ -34,9 +34,7 @@ class AccessContract extends Contract {
   //   sectionsJson - JSON array: ["ehr", "visits"] or ["all"]
   //   expiresAt    - ISO date string or "" for no expiry
   async GrantAccess(ctx, patientId, granteeId, granteeRole, sectionsJson, expiresAt) {
-    // patientService = patient-api's service account (verified patient JWT before calling)
-    // admin          = emergency/compliance override
-    const { userId } = requireRole(ctx, 'patientService', 'admin');
+    const { userId } = requireRole(ctx, 'patient');
 
     if (!patientId) {
       throw new Error('patientId is required');
@@ -139,7 +137,7 @@ class AccessContract extends Contract {
   //   granteeId  - who loses access
   //   reason     - optional reason string
   async RevokeAccess(ctx, patientId, granteeId, reason) {
-    const { role, userId } = requireRole(ctx, 'patientService', 'admin');
+    const { role, userId } = requireRole(ctx, 'patient');
 
     if (!patientId) throw new Error('patientId is required');
     if (!granteeId) throw new Error('granteeId is required');

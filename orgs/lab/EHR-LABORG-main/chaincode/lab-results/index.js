@@ -2,6 +2,37 @@
 
 const { Contract } = require('fabric-contract-api');
 
+function requireRole(ctx, allowedRoles, ...moreRoles) {
+  const role = ctx.clientIdentity.getAttributeValue('role');
+  const mspId = ctx.clientIdentity.getMSPID();
+  console.log(`Caller role: ${role}, MSP ID: ${mspId}`);
+
+  let fnName = 'unknown';
+  try {
+    if (ctx.stub && typeof ctx.stub.getFunctionAndParameters === 'function') {
+      const payload = ctx.stub.getFunctionAndParameters();
+      if (payload && payload.fcn) {
+        fnName = payload.fcn;
+      }
+    }
+  } catch (e) {
+    // fallback
+  }
+
+  let roles = [];
+  if (Array.isArray(allowedRoles)) {
+    roles = [...allowedRoles, ...moreRoles];
+  } else if (typeof allowedRoles === 'string') {
+    roles = [allowedRoles, ...moreRoles];
+  }
+
+  if (!role || !roles.includes(role)) {
+    throw new Error(`ACCESS DENIED: role "${role}" cannot call ${fnName}`);
+  }
+
+  return { role, mspId };
+}
+
 class LabResultsContract extends Contract {
   async ResultExists(ctx, resultId) {
     const data = await ctx.stub.getState(resultId);
@@ -57,6 +88,7 @@ class LabResultsContract extends Contract {
   }
 
   async CreateLabResult(ctx, resultId, patientId, testCode, collectedAt, status, resultDataJson) {
+    requireRole(ctx, 'labtech');
     const exists = await this.ResultExists(ctx, resultId);
     if (exists) {
       throw new Error(`Lab result ${resultId} already exists`);

@@ -25,12 +25,17 @@ enroll_identity() {
   local PASSWORD=$4
   local TLS_CERT=$5
   local CA_NAME=$6
+  local ENROLL_ATTRS=${7:-""}
 
-  echo ">>> Enrolling: $USER at $CA_URL (CA: $CA_NAME)"
+  ATTR_FLAG=""
+  [ -n "$ENROLL_ATTRS" ] && ATTR_FLAG="--enrollment.attrs $ENROLL_ATTRS"
+
+  echo ">>> Enrolling: $USER at $CA_URL (CA: $CA_NAME) attrs=[$ENROLL_ATTRS]"
   fabric-ca-client enroll \
     -u https://$USER:$PASSWORD@$CA_URL \
     --caname $CA_NAME \
     --tls.certfiles $TLS_CERT \
+    $ATTR_FLAG \
     -M $MSP_DIR
   echo "✓ Enrolled: $USER"
 }
@@ -50,7 +55,6 @@ register_identity() {
   ATTR_FLAG=""
   [ -n "$ATTRS" ] && ATTR_FLAG="--id.attrs $ATTRS"
 
-  FABRIC_CA_CLIENT_HOME=$ADMIN_MSP \
   fabric-ca-client register \
     --caname $CA_NAME \
     --id.name $USER \
@@ -58,7 +62,8 @@ register_identity() {
     --id.type $TYPE \
     $ATTR_FLAG \
     --tls.certfiles $TLS_CERT \
-    -u https://$CA_URL
+    -M "$ADMIN_MSP/msp" \
+    -u https://$CA_URL 2>&1 || echo "  (Note: $USER may already be registered)"
   echo "✓ Registered: $USER"
 }
 
@@ -132,7 +137,6 @@ enroll_peer() {
 
   # TLS
   echo ">>> Enrolling TLS for $PEER_NAME"
-  FABRIC_CA_CLIENT_HOME="$ORG_DIR/users/admin" \
   fabric-ca-client enroll \
     -u https://$PEER_NAME:$PEER_PW@$CA_URL \
     --caname $CA_NAME \
@@ -143,9 +147,9 @@ enroll_peer() {
     --tls.certfiles $CA_TLS
 
   local TLS_DIR="$ORG_DIR/peers/$PEER_NAME/tls"
-  cp $TLS_DIR/signcerts/*.pem  $TLS_DIR/server.crt
-  cp $TLS_DIR/keystore/*_sk    $TLS_DIR/server.key
-  cp $TLS_DIR/tlscacerts/*.pem $TLS_DIR/ca.crt
+  cp $(ls -t $TLS_DIR/signcerts/*.pem | head -1)  $TLS_DIR/server.crt
+  cp $(ls -t $TLS_DIR/keystore/*_sk | head -1)    $TLS_DIR/server.key
+  cp $(ls -t $TLS_DIR/tlscacerts/*.pem | head -1) $TLS_DIR/ca.crt
   echo "✓ TLS enrolled for $PEER_NAME"
 }
 
@@ -188,7 +192,6 @@ write_config_yaml \
   "ca.example.com-cert.pem"
 
 echo ">>> Enrolling Orderer TLS"
-FABRIC_CA_CLIENT_HOME="$ORDERER_ORG/users/admin" \
 fabric-ca-client enroll \
   -u https://orderer.example.com:ordererpw@$ORDERER_CA_URL \
   --caname $ORDERER_CA_NAME \
@@ -199,9 +202,9 @@ fabric-ca-client enroll \
   --tls.certfiles $CA_ORDERER_TLS
 
 TLS_DIR="$ORDERER_ORG/orderers/orderer.example.com/tls"
-cp $TLS_DIR/signcerts/*.pem $TLS_DIR/server.crt
-cp $TLS_DIR/keystore/*_sk  $TLS_DIR/server.key
-cp $TLS_DIR/tlscacerts/*.pem $TLS_DIR/ca.crt
+cp $(ls -t $TLS_DIR/signcerts/*.pem | head -1) $TLS_DIR/server.crt
+cp $(ls -t $TLS_DIR/keystore/*_sk | head -1)  $TLS_DIR/server.key
+cp $(ls -t $TLS_DIR/tlscacerts/*.pem | head -1) $TLS_DIR/ca.crt
 echo "✓ Orderer TLS enrolled"
 
 create_ou_config "$ORDERER_ORG/msp" "example.com" $CA_ORDERER_TLS
@@ -281,14 +284,16 @@ register_identity $HOSPITAL_CA_URL "$HOSPITAL_ORG/users/admin" \
   $CA_HOSPITAL_TLS $HOSPITAL_CA_NAME \
   "role=admin:ecert"
 
-# ── Register patientService — ONE service account used by patient-api ────────
-# patient-api authenticates real patients via SQLite + JWT off-chain,
-# then signs blockchain transactions using this single service identity.
-# This avoids enrolling one Fabric identity per patient (impractical at scale).
+register_identity $HOSPITAL_CA_URL "$HOSPITAL_ORG/users/admin" \
+  "patient"          "patientpw"  "client" \
+  $CA_HOSPITAL_TLS $HOSPITAL_CA_NAME \
+  "role=patient:ecert"
+
+# ── Register patientService — service account used by patient-api ────────
 register_identity $HOSPITAL_CA_URL "$HOSPITAL_ORG/users/admin" \
   "patientService"   "patientservicepw" "client" \
   $CA_HOSPITAL_TLS $HOSPITAL_CA_NAME \
-  "role=patientService:ecert"
+  "role=patient:ecert"
 
 # ── Enroll peers (MSP + TLS) ──
 enroll_peer \
@@ -310,16 +315,17 @@ enroll_peer \
   "ca.hospital.example.com-cert.pem"
 
 # ── Enroll users ──
-enroll_identity $HOSPITAL_CA_URL "$HOSPITAL_ORG/users/receptionist/msp"     "receptionist"     "recpw"    $CA_HOSPITAL_TLS $HOSPITAL_CA_NAME
-enroll_identity $HOSPITAL_CA_URL "$HOSPITAL_ORG/users/doctor/msp"           "doctor"           "docpw"    $CA_HOSPITAL_TLS $HOSPITAL_CA_NAME
-enroll_identity $HOSPITAL_CA_URL "$HOSPITAL_ORG/users/nurse/msp"            "nurse"            "nursepw"  $CA_HOSPITAL_TLS $HOSPITAL_CA_NAME
-enroll_identity $HOSPITAL_CA_URL "$HOSPITAL_ORG/users/pharmacist/msp"       "pharmacist"       "pharmpw"  $CA_HOSPITAL_TLS $HOSPITAL_CA_NAME
-enroll_identity $HOSPITAL_CA_URL "$HOSPITAL_ORG/users/medrecordofficer/msp" "medrecordofficer" "medpw"    $CA_HOSPITAL_TLS $HOSPITAL_CA_NAME
-enroll_identity $HOSPITAL_CA_URL "$HOSPITAL_ORG/users/hospitaladmin/msp"    "hospitaladmin"    "hadminpw"         $CA_HOSPITAL_TLS $HOSPITAL_CA_NAME
-enroll_identity $HOSPITAL_CA_URL "$HOSPITAL_ORG/users/patientService/msp"  "patientService"   "patientservicepw" $CA_HOSPITAL_TLS $HOSPITAL_CA_NAME
+enroll_identity $HOSPITAL_CA_URL "$HOSPITAL_ORG/users/receptionist/msp"     "receptionist"     "recpw"            $CA_HOSPITAL_TLS $HOSPITAL_CA_NAME "role"
+enroll_identity $HOSPITAL_CA_URL "$HOSPITAL_ORG/users/doctor/msp"           "doctor"           "docpw"            $CA_HOSPITAL_TLS $HOSPITAL_CA_NAME "role"
+enroll_identity $HOSPITAL_CA_URL "$HOSPITAL_ORG/users/nurse/msp"            "nurse"            "nursepw"          $CA_HOSPITAL_TLS $HOSPITAL_CA_NAME "role"
+enroll_identity $HOSPITAL_CA_URL "$HOSPITAL_ORG/users/pharmacist/msp"       "pharmacist"       "pharmpw"          $CA_HOSPITAL_TLS $HOSPITAL_CA_NAME "role"
+enroll_identity $HOSPITAL_CA_URL "$HOSPITAL_ORG/users/medrecordofficer/msp" "medrecordofficer" "medpw"            $CA_HOSPITAL_TLS $HOSPITAL_CA_NAME "role"
+enroll_identity $HOSPITAL_CA_URL "$HOSPITAL_ORG/users/hospitaladmin/msp"    "hospitaladmin"    "hadminpw"         $CA_HOSPITAL_TLS $HOSPITAL_CA_NAME "role"
+enroll_identity $HOSPITAL_CA_URL "$HOSPITAL_ORG/users/patient/msp"          "patient"          "patientpw"        $CA_HOSPITAL_TLS $HOSPITAL_CA_NAME "role"
+enroll_identity $HOSPITAL_CA_URL "$HOSPITAL_ORG/users/patientService/msp"   "patientService"   "patientservicepw" $CA_HOSPITAL_TLS $HOSPITAL_CA_NAME "role"
 
 # ── Write config.yaml for all user MSPs ──
-for USER in receptionist doctor nurse pharmacist medrecordofficer hospitaladmin patientService admin; do
+for USER in receptionist doctor nurse pharmacist medrecordofficer hospitaladmin patient patientService admin; do
   write_config_yaml_auto "$HOSPITAL_ORG/users/$USER/msp"
 done
 
@@ -361,9 +367,14 @@ register_identity $DIAG_CA_URL "$DIAG_ORG/users/admin" \
   "role=labreceptionist:ecert"
 
 register_identity $DIAG_CA_URL "$DIAG_ORG/users/admin" \
+  "labtech"         "labtechpw"  "client" \
+  $CA_DIAGNOSTICS_TLS $DIAG_CA_NAME \
+  "role=labtech:ecert"
+
+register_identity $DIAG_CA_URL "$DIAG_ORG/users/admin" \
   "labtechnician"   "labpw"      "client" \
   $CA_DIAGNOSTICS_TLS $DIAG_CA_NAME \
-  "role=labtechnician:ecert"
+  "role=labtech:ecert"
 
 register_identity $DIAG_CA_URL "$DIAG_ORG/users/admin" \
   "labsupervisor"   "labsuppw"   "client" \
@@ -386,13 +397,14 @@ enroll_peer \
   $CA_DIAGNOSTICS_TLS $DIAG_CA_NAME \
   "ca.diagnostic.example.com-cert.pem"
 
-enroll_identity $DIAG_CA_URL "$DIAG_ORG/users/labreceptionist/msp" "labreceptionist" "labrecpw"   $CA_DIAGNOSTICS_TLS $DIAG_CA_NAME
-enroll_identity $DIAG_CA_URL "$DIAG_ORG/users/labtechnician/msp"   "labtechnician"   "labpw"      $CA_DIAGNOSTICS_TLS $DIAG_CA_NAME
-enroll_identity $DIAG_CA_URL "$DIAG_ORG/users/labsupervisor/msp"   "labsupervisor"   "labsuppw"   $CA_DIAGNOSTICS_TLS $DIAG_CA_NAME
-enroll_identity $DIAG_CA_URL "$DIAG_ORG/users/radiologist/msp"     "radiologist"     "radpw"      $CA_DIAGNOSTICS_TLS $DIAG_CA_NAME
-enroll_identity $DIAG_CA_URL "$DIAG_ORG/users/labadmin/msp"        "labadmin"        "labadminpw" $CA_DIAGNOSTICS_TLS $DIAG_CA_NAME
+enroll_identity $DIAG_CA_URL "$DIAG_ORG/users/labreceptionist/msp" "labreceptionist" "labrecpw"   $CA_DIAGNOSTICS_TLS $DIAG_CA_NAME "role"
+enroll_identity $DIAG_CA_URL "$DIAG_ORG/users/labtech/msp"         "labtech"         "labtechpw"  $CA_DIAGNOSTICS_TLS $DIAG_CA_NAME "role"
+enroll_identity $DIAG_CA_URL "$DIAG_ORG/users/labtechnician/msp"   "labtechnician"   "labpw"      $CA_DIAGNOSTICS_TLS $DIAG_CA_NAME "role"
+enroll_identity $DIAG_CA_URL "$DIAG_ORG/users/labsupervisor/msp"   "labsupervisor"   "labsuppw"   $CA_DIAGNOSTICS_TLS $DIAG_CA_NAME "role"
+enroll_identity $DIAG_CA_URL "$DIAG_ORG/users/radiologist/msp"     "radiologist"     "radpw"      $CA_DIAGNOSTICS_TLS $DIAG_CA_NAME "role"
+enroll_identity $DIAG_CA_URL "$DIAG_ORG/users/labadmin/msp"        "labadmin"        "labadminpw" $CA_DIAGNOSTICS_TLS $DIAG_CA_NAME "role"
 
-for USER in labreceptionist labtechnician labsupervisor radiologist labadmin admin; do
+for USER in labreceptionist labtech labtechnician labsupervisor radiologist labadmin admin; do
   write_config_yaml_auto "$DIAG_ORG/users/$USER/msp"
 done
 
@@ -453,10 +465,10 @@ enroll_peer \
   $CA_PROVIDER_TLS $PROV_CA_NAME \
   "ca.provider.example.com-cert.pem"
 
-enroll_identity $PROV_CA_URL "$PROV_ORG/users/billingofficer/msp"   "billingofficer"   "billpw"      $CA_PROVIDER_TLS $PROV_CA_NAME
-enroll_identity $PROV_CA_URL "$PROV_ORG/users/claimsauditor/msp"    "claimsauditor"    "claimaudpw"  $CA_PROVIDER_TLS $PROV_CA_NAME
-enroll_identity $PROV_CA_URL "$PROV_ORG/users/insuranceofficer/msp" "insuranceofficer" "inspw"       $CA_PROVIDER_TLS $PROV_CA_NAME
-enroll_identity $PROV_CA_URL "$PROV_ORG/users/provideradmin/msp"    "provideradmin"    "provadminpw" $CA_PROVIDER_TLS $PROV_CA_NAME
+enroll_identity $PROV_CA_URL "$PROV_ORG/users/billingofficer/msp"   "billingofficer"   "billpw"      $CA_PROVIDER_TLS $PROV_CA_NAME "role"
+enroll_identity $PROV_CA_URL "$PROV_ORG/users/claimsauditor/msp"    "claimsauditor"    "claimaudpw"  $CA_PROVIDER_TLS $PROV_CA_NAME "role"
+enroll_identity $PROV_CA_URL "$PROV_ORG/users/insuranceofficer/msp" "insuranceofficer" "inspw"       $CA_PROVIDER_TLS $PROV_CA_NAME "role"
+enroll_identity $PROV_CA_URL "$PROV_ORG/users/provideradmin/msp"    "provideradmin"    "provadminpw" $CA_PROVIDER_TLS $PROV_CA_NAME "role"
 
 for USER in billingofficer claimsauditor insuranceofficer provideradmin admin; do
   write_config_yaml_auto "$PROV_ORG/users/$USER/msp"

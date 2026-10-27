@@ -173,6 +173,7 @@ fabric-ca-client enroll \
   -u https://$USERNAME:$PASSWORD@$CA_URL \
   --caname $CA_NAME \
   --tls.certfiles $CA_TLS_CERT \
+  --enrollment.attrs "role" \
   --home $TEMP_HOME \
   -M $MSP_DIR
 
