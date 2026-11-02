@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "channel": "ehrchannel",
+  "chaincode": "ehr",
+  "organizations": [
+    { "id": "HospitalMSP", "role": "hospital" },
+    { "id": "DiagnosticsMSP", "role": "diagnostics" },
+    { "id": "ProviderMSP", "role": "provider" }
+  ],
+  "orderers": [
+    { "id": "orderer.example.com", "endpointEnv": "DASHBOARD_ORDERER" }
+  ],
+  "peers": [
+    { "id": "peer0.hospital", "mspId": "HospitalMSP", "endpointEnv": "DASHBOARD_PEER_HOSPITAL_RECEPTION" },
+    { "id": "peer1.hospital", "mspId": "HospitalMSP", "endpointEnv": "DASHBOARD_PEER_HOSPITAL_DOCTOR" },
+    { "id": "peer2.hospital", "mspId": "HospitalMSP", "endpointEnv": "DASHBOARD_PEER_HOSPITAL_NURSE" },
+    { "id": "peer0.diagnostic", "mspId": "DiagnosticsMSP", "endpointEnv": "DASHBOARD_PEER_DIAGNOSTICS" },
+    { "id": "peer0.provider", "mspId": "ProviderMSP", "endpointEnv": "DASHBOARD_PEER_PROVIDER" }
+  ],
+  "agents": [
+    { "id": "clinical-agent", "kind": "ai", "org": "HospitalMSP", "status": "not_connected", "dependency": "AI" },
+    { "id": "history-agent", "kind": "ai", "org": "HospitalMSP", "status": "not_connected", "dependency": "AI" },
+    { "id": "governance-agent", "kind": "ai", "org": "HospitalMSP", "status": "not_connected", "dependency": "Security" },
+    { "id": "lab-agent", "kind": "ai", "org": "DiagnosticsMSP", "status": "not_connected", "dependency": "AI" },
+    { "id": "nurse-agent", "kind": "logical", "org": "HospitalMSP", "peerId": "peer2.hospital", "status": "not_connected", "dependency": "Hospital API" },
+    { "id": "pharmacy-agent", "kind": "logical", "org": "HospitalMSP", "peerId": "peer2.hospital", "status": "not_connected", "dependency": "Hospital API" }
+  ]
+}
