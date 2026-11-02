@@ -61,6 +61,28 @@ function resolveDataDirectory(root, environment = process.env) {
   return resolved;
 }
 
+function resolveCredentialPath(root, value, label) {
+  if (!value) return null;
+  if (path.isAbsolute(value)) throw new Error(`${label} must be repository-relative`);
+  const resolved = path.resolve(root, value);
+  const relative = path.relative(root, resolved);
+  const credentialsDirectory = path.resolve(__dirname, '..', 'credentials');
+  const credentialRelative = path.relative(credentialsDirectory, resolved);
+  if (!relative || relative.startsWith('..') || path.isAbsolute(relative) ||
+      credentialRelative.startsWith('..') || path.isAbsolute(credentialRelative)) {
+    throw new Error(`${label} must be under dashboard-api/credentials`);
+  }
+  return resolved;
+}
+
+function positiveInteger(environment, name, fallback, minimum = 1, maximum = 1000000) {
+  const value = Number(environment[name] || fallback);
+  if (!Number.isSafeInteger(value) || value < minimum || value > maximum) {
+    throw new Error(`${name} must be an integer from ${minimum} to ${maximum}`);
+  }
+  return value;
+}
+
 function readJson(filePath, label) {
   try {
     return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -81,6 +103,21 @@ function resolveTopologyEndpoints(topology, environment = process.env) {
     ...topology,
     peers: resolveItems(topology.peers),
     orderers: resolveItems(topology.orderers),
+    healthTargets: (topology.healthTargets || []).map((target) => {
+      const url = target.urlEnv ? environment[target.urlEnv] || null : null;
+      if (url) {
+        let parsed;
+        try {
+          parsed = new URL(url);
+        } catch {
+          throw new Error(`Invalid URL in ${target.urlEnv}`);
+        }
+        if (!['http:', 'https:'].includes(parsed.protocol) || parsed.username || parsed.password || parsed.search || parsed.hash) {
+          throw new Error(`Invalid URL in ${target.urlEnv}`);
+        }
+      }
+      return { ...target, url, status: url ? 'NOT_CHECKED' : 'NOT_CONFIGURED' };
+    }),
   };
 }
 
@@ -116,6 +153,32 @@ function loadConfig() {
   if (!Number.isSafeInteger(storeMaxFiles) || storeMaxFiles < 1 || storeMaxFiles > 1000) {
     throw new Error('DASHBOARD_STORE_MAX_FILES must be an integer from 1 to 1000');
   }
+  const collectorEnabled = String(process.env.DASHBOARD_COLLECTOR_ENABLED || 'true').toLowerCase() !== 'false';
+  const requestedFabricPeerId = process.env.DASHBOARD_FABRIC_PEER_ID;
+  const requestedFabricPeer = requestedFabricPeerId
+    ? topology.peers.find((peer) => peer.id === requestedFabricPeerId)
+    : null;
+  if (requestedFabricPeerId && !requestedFabricPeer) {
+    throw new Error('DASHBOARD_FABRIC_PEER_ID must match a peer in the topology configuration');
+  }
+  const collectorPeer = requestedFabricPeer ||
+    topology.peers.find((peer) => peer.mspId === topology.organizations.find((org) => org.role === 'hospital')?.id) ||
+    topology.peers[0];
+  const healthPollIntervalMs = positiveInteger(process.env, 'DASHBOARD_HEALTH_INTERVAL_MS', 15000, 1000, 3600000);
+  const healthTimeoutMs = positiveInteger(process.env, 'DASHBOARD_HEALTH_TIMEOUT_MS', 3000, 100, 60000);
+  const healthFailureThreshold = positiveInteger(process.env, 'DASHBOARD_HEALTH_FAILURE_THRESHOLD', 3, 1, 100);
+  const healthConcurrency = positiveInteger(process.env, 'DASHBOARD_HEALTH_MAX_CONCURRENCY', 4, 1, 32);
+  const heartbeatIntervalMs = positiveInteger(process.env, 'DASHBOARD_AGENT_HEARTBEAT_INTERVAL_MS', 15000, 1000, 3600000);
+  const heartbeatMissedIntervals = positiveInteger(process.env, 'DASHBOARD_AGENT_MISSED_INTERVALS', 3, 1, 100);
+  const collectorBackfillBlocks = positiveInteger(process.env, 'COLLECTOR_BACKFILL_BLOCKS', 200, 1, 100000);
+  const collectorConnectTimeoutMs = positiveInteger(process.env, 'DASHBOARD_FABRIC_CONNECT_TIMEOUT_MS', 5000, 100, 60000);
+  const maxStreamClients = positiveInteger(process.env, 'DASHBOARD_STREAM_MAX_CLIENTS', 500, 1, 10000);
+  const maxStreamBufferBytes = positiveInteger(process.env, 'DASHBOARD_STREAM_MAX_BUFFER_BYTES', 1048576, 1024, 67108864);
+  const streamHeartbeatMs = positiveInteger(process.env, 'DASHBOARD_STREAM_HEARTBEAT_MS', 20000, 1000, 3600000);
+  const streamReplayLimit = positiveInteger(process.env, 'DASHBOARD_STREAM_REPLAY_LIMIT', 200, 1, 1000);
+  const ingestMaxBodyBytes = positiveInteger(process.env, 'DASHBOARD_INGEST_MAX_BODY_BYTES', 1048576, 1024, 16777216);
+  const ingestMaxBatchSize = positiveInteger(process.env, 'DASHBOARD_INGEST_MAX_BATCH_SIZE', 100, 1, 1000);
+  const fabricMsp = topology.organizations.find((org) => org.role === 'hospital')?.id || '';
 
   return Object.freeze({
     repoRoot,
@@ -124,6 +187,42 @@ function loadConfig() {
     dataDir: resolveDataDirectory(repoRoot),
     storeMaxFileBytes,
     storeMaxFiles,
+    collectorEnabled,
+    collectorBackfillBlocks,
+    collectorConnectTimeoutMs,
+    fabric: {
+      endpoint: process.env.DASHBOARD_FABRIC_GATEWAY_ENDPOINT || collectorPeer?.endpoint || null,
+      peerId: collectorPeer?.id || null,
+      hostAlias: process.env.DASHBOARD_FABRIC_PEER_HOST_ALIAS || '',
+      tlsRootCertPath: resolveCredentialPath(repoRoot, process.env.DASHBOARD_FABRIC_TLS_ROOT_CERT_PATH, 'DASHBOARD_FABRIC_TLS_ROOT_CERT_PATH'),
+      tlsClientCertPath: resolveCredentialPath(repoRoot, process.env.DASHBOARD_FABRIC_TLS_CLIENT_CERT_PATH, 'DASHBOARD_FABRIC_TLS_CLIENT_CERT_PATH'),
+      tlsClientKeyPath: resolveCredentialPath(repoRoot, process.env.DASHBOARD_FABRIC_TLS_CLIENT_KEY_PATH, 'DASHBOARD_FABRIC_TLS_CLIENT_KEY_PATH'),
+      identityCertPath: resolveCredentialPath(repoRoot, process.env.DASHBOARD_FABRIC_IDENTITY_CERT_PATH, 'DASHBOARD_FABRIC_IDENTITY_CERT_PATH'),
+      identityKeyPath: resolveCredentialPath(repoRoot, process.env.DASHBOARD_FABRIC_IDENTITY_KEY_PATH, 'DASHBOARD_FABRIC_IDENTITY_KEY_PATH'),
+      mspId: process.env.DASHBOARD_FABRIC_MSP_ID || fabricMsp,
+      channel: process.env.DASHBOARD_FABRIC_CHANNEL || topology.channel,
+      chaincode: process.env.DASHBOARD_FABRIC_CHAINCODE || topology.chaincode,
+      organizations: topology.organizations.map((organization) => organization.id),
+    },
+    health: {
+      intervalMs: healthPollIntervalMs,
+      timeoutMs: healthTimeoutMs,
+      failureThreshold: healthFailureThreshold,
+      concurrency: healthConcurrency,
+      heartbeatIntervalMs,
+      heartbeatMissedIntervals,
+    },
+    allowMock: String(process.env.DASHBOARD_ALLOW_MOCK || 'false').toLowerCase() === 'true',
+    serviceKey: process.env.DASHBOARD_SERVICE_KEY || '',
+    ingestRateLimit: positiveInteger(process.env, 'DASHBOARD_INGEST_RATE_LIMIT', 300, 1, 100000),
+    ingestMaxBodyBytes,
+    ingestMaxBatchSize,
+    stream: {
+      maxClients: maxStreamClients,
+      maxBufferBytes: maxStreamBufferBytes,
+      heartbeatMs: streamHeartbeatMs,
+      replayLimit: streamReplayLimit,
+    },
     topology,
     authorization,
     topologyPath: path.relative(repoRoot, topologyPath),
@@ -137,5 +236,7 @@ module.exports = {
   loadDashboardEnv,
   resolveRepositoryFile,
   resolveDataDirectory,
+  resolveCredentialPath,
+  positiveInteger,
   resolveTopologyEndpoints,
 };

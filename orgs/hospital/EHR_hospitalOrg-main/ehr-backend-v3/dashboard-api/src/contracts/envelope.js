@@ -6,7 +6,7 @@ const REQUIRED_FIELDS = Object.freeze([
   'schemaVersion', 'eventId', 'eventType', 'timestamp', 'source', 'org', 'severity', 'payload',
 ]);
 const OPTIONAL_FIELDS = Object.freeze([
-  'peerId', 'txId', 'blockNumber', 'correlationId',
+  'peerId', 'txId', 'blockNumber', 'correlationId', 'channel', 'mock', 'unregistered',
 ]);
 const ALLOWED_FIELDS = new Set([...REQUIRED_FIELDS, ...OPTIONAL_FIELDS]);
 const ORGS = new Set(['HospitalMSP', 'DiagnosticsMSP', 'ProviderMSP']);
@@ -59,7 +59,7 @@ function validateScalar(field, value) {
   return false;
 }
 
-function validateEventEnvelope(input) {
+function validateEventEnvelope(input, options = {}) {
   if (!isPlainObject(input)) return error('Event must be a plain JSON object');
 
   for (const key of Object.keys(input)) {
@@ -72,17 +72,21 @@ function validateEventEnvelope(input) {
 
   if (input.schemaVersion !== 1) return error('Unsupported schemaVersion');
   if (!isSafeIdentifier(input.eventId)) return error('Invalid eventId');
-  if (typeof input.eventType !== 'string' || !Object.prototype.hasOwnProperty.call(EVENT_REGISTRY, input.eventType)) {
-    return error('Unsupported eventType');
-  }
+  if (typeof input.eventType !== 'string' || !/^[A-Z][A-Z0-9_]{0,95}$/.test(input.eventType)) return error('Invalid eventType');
+  const registered = Object.prototype.hasOwnProperty.call(EVENT_REGISTRY, input.eventType);
+  if (!registered && options.allowUnknownEventType !== true && input.unregistered !== true) return error('Unsupported eventType');
+  if (registered && input.unregistered === true) return error('Registered eventType cannot be marked unregistered');
+  if (input.mock !== undefined && typeof input.mock !== 'boolean') return error('mock must be a boolean');
+  if (input.unregistered !== undefined && typeof input.unregistered !== 'boolean') return error('unregistered must be a boolean');
   if (typeof input.timestamp !== 'string' || !input.timestamp.endsWith('Z') || !Number.isFinite(Date.parse(input.timestamp))) {
     return error('timestamp must be a UTC ISO date-time');
   }
   if (typeof input.source !== 'string' || !SOURCE.test(input.source)) return error('Invalid source');
-  if (!ORGS.has(input.org)) return error('Unsupported org');
+  const allowedOrganizations = options.organizations ? new Set(options.organizations) : ORGS;
+  if (!allowedOrganizations.has(input.org)) return error('Unsupported org');
   if (!SEVERITIES.has(input.severity)) return error('Unsupported severity');
 
-  for (const field of ['peerId', 'txId', 'correlationId']) {
+  for (const field of ['peerId', 'txId', 'correlationId', 'channel']) {
     if (input[field] !== undefined && !isSafeIdentifier(input[field])) return error(`Invalid ${field}`);
   }
   if (input.blockNumber !== undefined && (!Number.isSafeInteger(input.blockNumber) || input.blockNumber < 0)) {
@@ -90,7 +94,8 @@ function validateEventEnvelope(input) {
   }
   if (!isPlainObject(input.payload)) return error('payload must be a plain JSON object');
 
-  const permitted = EVENT_REGISTRY[input.eventType].payloadFields;
+  const genericSafeFields = ['component', 'status', 'reasonCode', 'errorCode', 'latencyMs', 'agentId'];
+  const permitted = registered ? EVENT_REGISTRY[input.eventType].payloadFields : genericSafeFields;
   for (const [key, value] of Object.entries(input.payload)) {
     if (SENSITIVE_KEYS.has(normalizeKey(key))) return error(`Forbidden sensitive payload field: ${key}`);
     if (!permitted.includes(key)) return error(`Unsupported payload field for ${input.eventType}: ${key}`);

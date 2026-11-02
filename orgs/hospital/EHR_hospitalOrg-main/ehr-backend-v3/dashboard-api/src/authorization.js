@@ -40,7 +40,7 @@ function canAccessEvent(user, event, authorization) {
   // Peer health is non-clinical and is visible to roles assigned to that peer.
   // Transaction and execution events require an explicit logical agent tag so
   // a shared physical peer cannot leak another role's activity.
-  if (event.eventType === 'PEER_STATUS_CHANGED') {
+  if (['PEER_STATUS_CHANGED', 'PEER_DOWN', 'API_STATUS_CHANGED', 'API_DOWN'].includes(event.eventType)) {
     return matches(policy.peerIds, event.peerId);
   }
   return false;

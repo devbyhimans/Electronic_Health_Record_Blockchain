@@ -20,7 +20,10 @@ test('health response reports dependencies as not connected without fabricated m
       success: true,
       service: 'dashboard-api',
       status: 'UP',
-      dependencies: { fabric: 'NOT_CONNECTED', store: 'NOT_CONNECTED' },
+      dependencies: { fabric: 'NOT_CONNECTED', store: 'NOT_CONNECTED', healthPoller: 'NOT_CONNECTED' },
+      collector: { status: 'NOT_CONNECTED', lastProcessedBlock: null },
+      healthPoller: { status: 'NOT_CONNECTED', targets: {} },
+      agents: { observedAgents: 0, offlineAgents: 0, pendingExecutions: 0 },
     });
   } finally {
     await new Promise((resolve) => server.close(resolve));

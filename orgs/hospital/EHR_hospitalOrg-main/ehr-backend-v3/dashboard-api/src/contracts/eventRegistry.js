@@ -28,7 +28,7 @@ const HEALTH = ['component', 'status', 'reasonCode', 'latencyMs', 'blockHeight',
 const TX = ['chaincode', 'functionName', 'creatorMsp', 'validationCode', 'agentId', 'durationMs', 'reasonCode', 'patientIdHash'];
 const AGENT = ['agentId', 'status', 'durationMs', 'errorCode', 'modelFingerprint', 'fallbackUsed', 'humanReviewStatus', 'stage', 'stageStatus', 'patientIdHash', 'recordHash', 'cid'];
 const ACCESS = ['agentId', 'reasonCode', 'status', 'patientIdHash', 'granteeIdHash', 'expiresAt'];
-const IPFS = ['component', 'status', 'cid', 'byteLength', 'durationMs', 'errorCode', 'artifactCount', 'agentId'];
+const IPFS = ['component', 'status', 'reasonCode', 'latencyMs', 'cid', 'byteLength', 'durationMs', 'errorCode', 'artifactCount', 'agentId'];
 const VCAP = ['agentId', 'status', 'recordHash', 'promptHash', 'summaryHash', 'modelFingerprint', 'gatewaySignerHash', 'patientIdHash', 'errorCode', 'durationMs'];
 const FHIR = ['agentId', 'status', 'durationMs', 'errorCode', 'recordHash', 'cid', 'patientIdHash'];
 
@@ -37,10 +37,17 @@ const FHIR = ['agentId', 'status', 'durationMs', 'errorCode', 'recordHash', 'cid
 // disconnected until their owning teams publish these contracts.
 const EVENT_REGISTRY = Object.freeze({
   PEER_STATUS_CHANGED: event('health', HEALTH, 'Fabric operations endpoint'),
+  PEER_DOWN: event('health', HEALTH, 'Fabric operations endpoint'),
   ORDERER_STATUS_CHANGED: event('health', HEALTH, 'Fabric operations endpoint'),
+  ORDERER_DOWN: event('health', HEALTH, 'Fabric operations endpoint'),
+  API_STATUS_CHANGED: event('health', HEALTH, 'API health endpoint'),
+  API_DOWN: event('health', HEALTH, 'API health endpoint'),
+  API_ACTION_EVALUATED: event('security', ['component', 'status', 'reasonCode', 'agentId'], 'TODO(dependency: API gateway owners)'),
   CA_STATUS_CHANGED: event('health', HEALTH, 'Fabric CA operations endpoint'),
   LAB_STATUS_CHANGED: event('health', HEALTH, 'Lab gateway'),
+  LAB_DOWN: event('health', HEALTH, 'Lab gateway'),
   PHARMACY_STATUS_CHANGED: event('health', HEALTH, 'Pharmacy gateway'),
+  PHARMACY_DOWN: event('health', HEALTH, 'Pharmacy gateway'),
   AGENT_HEARTBEAT: event('health', AGENT, 'TODO(dependency: AI / service owners)'),
   AGENT_OFFLINE: event('health', AGENT, 'TODO(dependency: AI / service owners)'),
   BLOCK_HEIGHT_CHANGED: event('block', ['blockHeight', 'component'], 'Fabric block listener'),

@@ -32,6 +32,7 @@ class NdjsonEventStore extends EventStore {
     this.directory = path.resolve(options.directory);
     this.maxFileBytes = options.maxFileBytes || 10 * 1024 * 1024;
     this.maxFiles = options.maxFiles || 5;
+    this.organizations = options.organizations;
     if (!Number.isSafeInteger(this.maxFileBytes) || this.maxFileBytes < 1024) {
       throw new Error('maxFileBytes must be an integer of at least 1024');
     }
@@ -89,7 +90,7 @@ class NdjsonEventStore extends EventStore {
   }
 
   async _appendOne(event) {
-    const validation = validateEventEnvelope(event);
+    const validation = validateEventEnvelope(event, { organizations: this.organizations });
     if (!validation.valid) {
       const error = new TypeError(`Invalid event envelope: ${validation.error}`);
       error.code = 'INVALID_EVENT';
@@ -213,7 +214,7 @@ class NdjsonEventStore extends EventStore {
       for (const line of lines) {
         try {
           const event = JSON.parse(line);
-          const validation = validateEventEnvelope(event);
+          const validation = validateEventEnvelope(event, { organizations: this.organizations });
           if (!validation.valid) throw new Error('Invalid event envelope');
           const txKey = eventTransactionKey(event);
           if (this.records.has(event.eventId) || (txKey && this.byTransaction.has(txKey))) {
@@ -307,6 +308,29 @@ class NdjsonEventStore extends EventStore {
       .sort((left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp) ||
         String(right.eventId).localeCompare(String(left.eventId)))
       .slice(0, limit);
+  }
+
+  getEventsAfter(eventId, requestedLimit = 100) {
+    const limit = safeLimit(requestedLimit);
+    if (!eventId) {
+      const recent = [];
+      for (const event of this.records.values()) {
+        recent.push(event);
+        if (recent.length > limit) recent.shift();
+      }
+      return recent;
+    }
+    let found = false;
+    const result = [];
+    for (const [currentId, event] of this.records) {
+      if (!found) {
+        if (currentId === eventId) found = true;
+        continue;
+      }
+      result.push(event);
+      if (result.length >= limit) break;
+    }
+    return found ? result : null;
   }
 
   getStats() {

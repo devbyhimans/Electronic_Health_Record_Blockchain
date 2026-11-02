@@ -4,11 +4,15 @@ const express = require('express');
 const { createAuthenticate } = require('./middleware/authenticate');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 const logger = require('./logger');
+const { createIngestHandler } = require('./routes/ingest');
+const { makeDashboardRouter } = require('./realtime/RealtimeServer');
+const { StreamTicketStore } = require('./realtime/StreamTicketStore');
 
 function createApp(config) {
   const app = express();
+  const tickets = config.tickets || new StreamTicketStore();
   app.disable('x-powered-by');
-  app.use(express.json({ limit: '1mb', strict: true }));
+  app.use(express.json({ limit: config.ingestMaxBodyBytes || '1mb', strict: true }));
   app.use((req, res, next) => {
     const startedAt = process.hrtime.bigint();
     res.on('finish', () => {
@@ -26,12 +30,39 @@ function createApp(config) {
     success: true,
     service: 'dashboard-api',
     status: 'UP',
-    dependencies: { fabric: 'NOT_CONNECTED', store: config.store ? 'CONNECTED' : 'NOT_CONNECTED' },
+    dependencies: {
+      fabric: config.collector?.getStatus().status || 'NOT_CONNECTED',
+      store: config.store ? 'CONNECTED' : 'NOT_CONNECTED',
+      healthPoller: config.healthPoller?.getStatus().status || 'NOT_CONNECTED',
+    },
+    collector: config.collector?.getStatus() || { status: 'NOT_CONNECTED', lastProcessedBlock: null },
+    healthPoller: config.healthPoller?.getStatus() || { status: 'NOT_CONNECTED', targets: {} },
+    agents: config.heartbeatMonitor?.getStatus() || { observedAgents: 0, offlineAgents: 0, pendingExecutions: 0 },
   }));
 
   app.locals.dashboardAuthenticate = createAuthenticate(config.authorization);
   app.locals.dashboardConfig = config;
   app.locals.dashboardStore = config.store || null;
+  app.locals.dashboardTickets = tickets;
+  app.locals.realtime = config.realtime || {
+    openSse: (_req, res) => res.status(503).json({ success: false, error: 'Dashboard stream is not available.' }),
+  };
+  app.use('/api/dashboard', makeDashboardRouter({
+    authorization: config.authorization,
+    tickets,
+    store: config.store,
+    getRealtime: () => app.locals.realtime,
+  }));
+  app.post('/internal/events', ...createIngestHandler({
+    store: config.store,
+    eventHub: config.eventHub,
+    heartbeatMonitor: config.heartbeatMonitor,
+    organizations: config.fabric?.organizations,
+    serviceKey: config.serviceKey,
+    rateLimit: config.ingestRateLimit,
+    maxBatchSize: config.ingestMaxBatchSize,
+    allowMock: config.allowMock === true,
+  }));
   app.use(notFound);
   app.use(errorHandler);
   return app;

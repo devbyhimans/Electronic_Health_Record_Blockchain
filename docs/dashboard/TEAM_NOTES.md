@@ -53,3 +53,25 @@ The role matrix lives in `dashboard-api/config/authorization.json`. Unknown role
 ## Contact
 
 Group 1 dashboard track owner: Himanshu. Cross-team integration owners are listed in `docs/dashboard/DEPENDENCIES.md` as that inventory is completed.
+# Dashboard API team notes
+
+## Phase 3: collector, health polling, and realtime
+
+- Fabric collection is optional. It reads only committed block events and records transaction metadata (tx id, channel, chaincode/function, creator MSP, validation code, block number, timestamp). It never stores invocation arguments, read/write sets, or transaction payloads.
+- The collector requires a dashboard-owned read-only client identity and TLS material under `dashboard-api/credentials/`. It does not inspect gateway wallets or other services' environment files. See `DASHBOARD_OBSERVER_IDENTITY.md`; those enrollment steps are a draft for an operator to run.
+- The collector starts at the configured recent backfill window when there is no usable checkpoint, then resumes at checkpoint + 1. Replayed Fabric blocks are deduplicated by the event store.
+- Health polling performs bounded HTTP GET requests only. Peer operations endpoints stay unconfigured until an operator supplies URLs. The pharmacy `/api/network-status` endpoint is also polled by GET; the dashboard discards its response body and does not invoke Docker itself.
+- WS and SSE share the dashboard API process. Authenticated clients obtain a short-lived, single-use ticket, and streams apply the configured role policy to live and replayed events.
+- The ticket must travel in the stream URL because browser WebSocket/EventSource clients cannot set Authorization headers. API request logs omit URL/query values. Before deployment, the Infra owner must ensure reverse-proxy access logs redact the `ticket` query parameter (`TODO(dependency: Infra)`); never log request targets containing stream tickets.
+- The demo generator is separate from live producers. Mock events carry `mock: true`, and ingest rejects them unless `DASHBOARD_ALLOW_MOCK=true`.
+
+## Enabling lab/provider token access
+
+Lab/provider tokens remain disabled unless the dashboard operator adds the `extorg-api` `JWT_SECRET` value to `DASHBOARD_JWT_SECRETS` in the dashboard's own local environment. Never paste that value into chat, commit it, or copy it into a shared `.env.example`; use a local secret manager or untracked dashboard `.env`. Teammates who do not configure it continue using the normal hospital token key; their setup and tokens are unaffected.
+
+## Runtime limitations
+
+- The default collector identity is not provisioned by this module. Fabric status remains `NOT_CONNECTED` until the operator enrolls the dashboard observer and supplies endpoint/certificate paths.
+- The dashboard has no Docker socket, Fabric network management, or restart permissions.
+- Stream event replay is limited to the retained window. A `replay-gap` message signals that the requested cursor is no longer retained.
+- The NDJSON store is single-process local storage. It is not a tamper-evident audit ledger; do not treat it as proof of non-repudiation.

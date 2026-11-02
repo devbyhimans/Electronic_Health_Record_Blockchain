@@ -1,4 +1,6 @@
 # Runtime-only event history and temporary files. Never commit dashboard data.
 /data/
+/.demo/
+/credentials/
 *.ndjson
 *.tmp

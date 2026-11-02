@@ -17,6 +17,10 @@ class EventStore {
     throw new Error('EventStore.query must be implemented');
   }
 
+  getEventsAfter(_eventId, _limit) {
+    throw new Error('EventStore.getEventsAfter must be implemented');
+  }
+
   getStats() {
     throw new Error('EventStore.getStats must be implemented');
   }

@@ -13,7 +13,7 @@ npm run lint
 npm start
 ```
 
-The default health URL is `http://localhost:4010/health`. Fabric remains `NOT_CONNECTED`; the local EventStore starts with the API and is reported as `CONNECTED`. Event ingest and query routes are not implemented yet. The service can start without JWT configuration so its health endpoint remains available, but protected operations fail closed with 503 until a key is configured.
+The default health URL is `http://localhost:4010/health`. The local EventStore starts with the API and is reported as `CONNECTED`. Fabric collection is optional and reports `NOT_CONNECTED` until the dashboard observer credentials and endpoint settings are supplied. The service can start without JWT configuration so its health endpoint remains available; protected operations fail closed until a key is configured.
 
 Copy `.env.example` to `.env` for local settings. The loader reads only this dashboard-api `.env` file, then uses process environment values in preference to file values. It does not read any other service's `.env`. Configuration file paths must be relative to the repository root.
 
@@ -23,7 +23,7 @@ Copy `.env.example` to `.env` for local settings. The loader reads only this das
 - Never copy another service's secret into this repository or chat. The operator places the required key in their own local environment. The sample `.env.example` contains placeholders only.
 - Tokens are verified with HS256 only. Unsigned tokens, `alg: none`, expired tokens, and tokens missing any of `userId`, `role`, `mspId`, `peer`, or a valid `exp` are rejected. Token strings and claim values are never logged.
 - An extorg-role token without a configured extorg verification key receives an explicit “Lab/provider login is not enabled” 401 response. A valid signature does not override the authorization matrix.
-- No token is accepted from a URL or query parameter. The planned WebSocket/SSE stream ticket contract is documented in `src/contracts/responseShapes.js`; tickets are not implemented until the realtime phase.
+- No bearer token is accepted from a URL or query parameter. Authenticated clients POST to `/api/dashboard/stream-ticket`, then use the short-lived single-use ticket on `/api/dashboard/ws` or `/api/dashboard/stream`. Deployment access logs must redact the ticket query parameter.
 - `DASHBOARD_AUTH_STUB` is `false` by default. Phase 1 has no stub-auth path; setting it to `true` is rejected rather than granting access.
 
 ## Role authorization
@@ -45,7 +45,7 @@ The same authorization helpers are intended for REST, WebSocket, SSE, and replay
 
 The peer0-api and extorg-api source code signs the same `userId`, `role`, `mspId`, and `peer` claims using `JWT_SECRET`. Runtime values are not read. Extorg tokens are accepted only when the operator supplies the extorg key as a later entry in `DASHBOARD_JWT_SECRETS`.
 
-## Phase 2 EventStore
+## EventStore
 
 The `EventStore` interface is implemented by `NdjsonEventStore` using Node's built-in filesystem modules only. It validates event envelopes before persistence, serializes concurrent writes in one API process, appends one JSON event per line, and synchronizes each appended record before reporting success. In-memory indexes support lookup by event ID, transaction ID, event type, organization, and agent.
 
@@ -63,13 +63,23 @@ Configuration rejects absolute or repository-escaping data paths. The sample pat
 - `src/contracts/envelope.js` validates schema version 1. Required fields: `schemaVersion`, `eventId`, `eventType`, `timestamp`, `source`, `org`, `severity`, and `payload`. Optional fields: `peerId`, `txId`, `blockNumber`, and `correlationId`.
 - `patientIdHash` is permitted only as `hmac-sha256:<64 hex chars>` in approved event payloads. Patient raw identifiers, names, clinical values, AI narrative, nested objects, and unregistered payload fields are rejected.
 - The event registry includes the Group 1 transaction/health/consent types, the agreed FHIR, AI, governance, human-review, VCAP, IPFS, and emergency-access vocabulary. Producers are marked in registry metadata and remain `TODO(dependency: <team>)` until supplied by their owners.
-- `src/contracts/responseShapes.js` records target response shapes. In Phase 1 the only HTTP route implemented is `GET /health`; REST aggregation and stream routes arrive in later phases.
+- `src/contracts/responseShapes.js` records response shapes. The current routes include `GET /health`, `POST /internal/events`, and the dashboard stream ticket/WS/SSE endpoints. Aggregation API work remains for a later phase.
 - API errors use the existing `{ "success": false, "error": "..." }` shape. Request logs include only method, status, and duration; request headers, query, body, tokens, and event payloads are never logged.
 
 ## Container and existing workflow
 
 The Dockerfile uses Node 20 Alpine and installs only exact, approved JavaScript package versions. It is not included in Compose until a reviewed Phase 6 patch. `.github/workflows/docker-build-push.yml` has a static image matrix that does not include dashboard-api; a new `package.json` or Dockerfile matches its path trigger on pushes to `main`/`master`, but the workflow would rebuild only its existing matrix images. The workflow is not modified in Phase 1.
 
-## Implemented in Phase 1
+## Phase 3 realtime layer
 
-Phases 1 and 2 add configuration loading, structured non-PHI logging, health, JWT verification, role filtering helpers, event contracts, and the local EventStore with tests. The collector, event ingest, stream tickets, REST aggregation, portal wiring, login UI, deployment integration, and gateway emitter patches are not implemented yet.
+- `POST /internal/events` is disabled with HTTP 503 until `DASHBOARD_SERVICE_KEY` is configured. When enabled it requires `X-Dashboard-Service-Key`, validates batches item by item, enforces a request limit, deduplicates by event ID, rejects PHI, and flags unknown event types as `unregistered`.
+- Fabric block events are normalized using the pinned `@hyperledger/fabric-gateway` 1.4.0 client and Fabric protobufs. Only transaction metadata is emitted; arguments and read/write sets are never included. Checkpoints use an atomic temporary file plus rename.
+- HTTP health checks are GET-only with bounded concurrency, a per-target timeout, and an N-failure transition threshold. Unconfigured operations endpoints remain `NOT_CONFIGURED`; the poller has no Docker socket or restart capability.
+- `/api/dashboard/ws` and `/api/dashboard/stream` share the API listener. Both enforce the role policy for live events and replay; slow clients are closed with a resumable cursor hint. `/internal/events` is internal-only and has not been added to Nginx.
+- `npm run mock:events` sends explicitly labelled synthetic events to an already-running API if mock ingest is enabled. `npm run demo` starts an isolated API process with Fabric off and mock on, then demonstrates a labelled WebSocket event.
+- Demo data is isolated in a unique Git-ignored `.demo/<run-id>/data/` directory; it does not reuse the live dashboard store.
+- `docs/dashboard/patches/` contains un-applied optional gateway emitters and a draft chaincode helper. No shared gateway or chaincode source was changed.
+
+## Implemented through Phase 3
+
+Phases 1–3 add configuration loading, structured non-PHI logging, health, JWT verification, role filtering, event contracts, the local EventStore, committed-block collection, health polling, internal ingest, stream tickets, WS/SSE delivery, and mock demo support. REST aggregation, portal wiring, login UI, deployment integration, and real producer connections remain for later phases or team owners.
