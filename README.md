@@ -6,6 +6,12 @@
 
 The **Blockchain Electronic Health Record (EHR) System** is a decentralized, enterprise-grade healthcare federation built on Hyperledger Fabric v2.5. By uniting independent stakeholders (Hospital, Pharmacy, Lab, and Digilocker) on a shared immutable ledger, it solves critical challenges in data fragmentation, single points of failure, and unauthorized access. The architecture strictly enforces Attribute-Based Access Control (ABAC) and cryptographically guaranteed patient sovereignty, ensuring medical records are only accessible with explicit, on-chain consent.
 
+## Start the local workspace
+
+Run `./start.sh` from the project root. It starts the existing Fabric containers and application services without reenrolling identities, resetting ledger data, redeploying chaincode, or deleting Docker volumes. The single entry point is [http://localhost/](http://localhost/); it links to each existing portal and displays live service checks. Unavailable integrations remain clearly marked unavailable.
+
+Run `./stop.sh` to stop the containers while preserving identity material and volumes. Use the existing portal ports directly if needed: hospital `5173`, patient `5174`, dashboard `/dashboard/`, pharmacy `5175`, and lab `/lab/`. Pharmacy apps remain separate services and may report unavailable if their containers do not build in the current environment.
+
 ---
 
 ## 🧬 Complete System Architecture

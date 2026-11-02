@@ -11,6 +11,7 @@ import DoctorVisits from './pages/DoctorVisits'
 import NurseVisits from './pages/NurseVisits'
 import { PharmacistPage, MedRecordsPage } from './pages/PharmacistRecords'
 import Staff from './pages/Staff'
+import ThemeToggle from './components/ThemeToggle'
 import './index.css'
 
 function ProtectedRoute({ children, allowedRoles }) {
@@ -120,6 +121,7 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <AuthProvider>
         <AppRoutes />
+        <ThemeToggle />
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>

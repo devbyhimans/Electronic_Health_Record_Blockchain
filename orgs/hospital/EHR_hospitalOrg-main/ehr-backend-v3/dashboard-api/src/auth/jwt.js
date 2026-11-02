@@ -3,14 +3,23 @@
 const jwt = require('jsonwebtoken');
 const { getRolePolicy } = require('../authorization');
 
+const EXAMPLE_SECRETS = new Set([
+  'replace-with-peer0-api-jwt-secret',
+  'replace_with_32_plus_random_chars',
+]);
+
+function isConfiguredSecret(secret) {
+  return Boolean(secret) && !EXAMPLE_SECRETS.has(secret.toLowerCase());
+}
+
 function configuredSecrets(environment = process.env) {
   const configuredList = (environment.DASHBOARD_JWT_SECRETS || '')
     .split(',')
     .map((secret) => secret.trim())
-    .filter(Boolean);
+    .filter(isConfiguredSecret);
   const secrets = configuredList.length
     ? configuredList
-    : (environment.JWT_SECRET ? [environment.JWT_SECRET] : []);
+    : (isConfiguredSecret(environment.JWT_SECRET) ? [environment.JWT_SECRET] : []);
   return { secrets: [...new Set(secrets)], hasExplicitList: configuredList.length > 0 };
 }
 
@@ -74,4 +83,4 @@ function verifyDashboardToken(token, options = {}) {
   return { ok: true, user: verifiedPayload, matchedSecretIndex };
 }
 
-module.exports = { configuredSecrets, validClaims, verifyDashboardToken };
+module.exports = { configuredSecrets, isConfiguredSecret, validClaims, verifyDashboardToken };

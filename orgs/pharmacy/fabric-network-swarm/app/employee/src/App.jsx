@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Search, Plus, User, CreditCard, CheckCircle2, RefreshCw, LogIn } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './styles.css';
+import ThemeToggle from './ThemeToggle.jsx';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/pharmacy';
 
@@ -20,11 +21,18 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [step, setStep] = useState('login'); // 'login' | 'search' | 'bill' | 'success'
   const [lastTx, setLastTx] = useState(null);
+  const [ledgerAvailable, setLedgerAvailable] = useState(false);
 
   const [billData, setBillData] = useState({
     amount: '',
     medicines: [{ name: '', quantity: '1' }]
   });
+
+  React.useEffect(() => {
+    api('/api/network-status')
+      .then(status => setLedgerAvailable(Object.values(status.nodes || {}).some(height => typeof height === 'number')))
+      .catch(() => setLedgerAvailable(false));
+  }, []);
 
   const handleLogin = (e) => {
     e.preventDefault();
@@ -115,8 +123,9 @@ export default function App() {
               <button className="btn" onClick={handleLogout} style={{ fontSize: '0.75rem', padding: '0.4rem 0.8rem' }}>Logout</button>
             </>
           )}
-          <div className={`badge ${loggedIn ? 'badge-green' : 'badge-yellow'}`}>{loggedIn ? 'BILLING ACTIVE' : 'NOT LOGGED IN'}</div>
+          <div className={`badge ${ledgerAvailable ? 'badge-green' : 'badge-yellow'}`}>{ledgerAvailable ? 'LEDGER CONNECTED' : 'LEDGER NOT CONNECTED'}</div>
         </div>
+              <ThemeToggle />
       </nav>
 
       <main className="app-container">
@@ -149,6 +158,7 @@ export default function App() {
               <p style={{ marginTop: '1.5rem', fontSize: '0.75rem', color: '#64748b', textAlign: 'center' }}>
                 Ask your manager to register you first at the Manager portal (:3001)
               </p>
+              <p role="status" className="connection-note">Entering an ID only opens this local demo screen; it does not authenticate a pharmacist.</p>
             </motion.div>
           )}
 
@@ -172,9 +182,9 @@ export default function App() {
                   required
                   style={{ fontSize: '1.1rem', textAlign: 'center', letterSpacing: '0.05em' }}
                 />
-                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem' }} disabled={loading}>
+                <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem' }} disabled={loading || !ledgerAvailable}>
                   {loading ? <RefreshCw size={16} className="animate-spin" /> : <Search size={16} />}
-                  {loading ? 'Verifying on Ledger...' : 'Access Patient Ledger'}
+                  {loading ? 'Verifying on Ledger...' : ledgerAvailable ? 'Access Patient Ledger' : 'Ledger unavailable'}
                 </button>
               </form>
             </motion.div>
@@ -270,7 +280,7 @@ export default function App() {
                       <Plus size={14} /> Add Medicine
                     </button>
 
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem' }} disabled={loading}>
+                    <button type="submit" className="btn btn-primary" style={{ width: '100%', padding: '1rem' }} disabled={loading || !ledgerAvailable}>
                       {loading ? <><RefreshCw size={16} className="animate-spin" /> Committing to Ledger…</> : 'Sign & Submit'}
                     </button>
                   </form>

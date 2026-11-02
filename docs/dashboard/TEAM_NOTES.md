@@ -1,5 +1,18 @@
 # Group 1 Dashboard — Team Notes
 
+## Current handoff status (2026-11-03)
+
+The Phase 1–4 backend work is committed locally. Phase 5 portal wiring and Phase 6 optional deployment wiring are implemented in the current worktree and are awaiting their dashboard-only commits. The full current state, run commands, verification record, and remaining work are in [`PROJECT_HANDOFF.md`](PROJECT_HANDOFF.md).
+
+- The dashboard is opt-in: Compose services use the `dashboard` profile; host startup requires `ENABLE_DASHBOARD=true`. Default Compose and `start.sh` behavior should remain unchanged.
+- Dashboard Compose routes are `/dashboard/` and `/api/dashboard/`; `/internal/events` is not routed through Nginx. Nginx access logging is disabled for `/api/dashboard/` so stream-ticket query strings are not logged.
+- Portal login uses `ehr_dashboard_token` and `ehr_dashboard_user`; same-origin `ehr_hospital_token` reads are production-only, explicitly enabled, and never mutate the hospital token.
+- The API ignores documented sample JWT placeholders. The operator must enter the actual peer0 signing secret locally in the dashboard-owned `.env` for login. Never copy other service `.env` files or place secret values in Git/chat.
+- The user’s root Compose build failed on existing pharmacy Alpine/musl Rolldown package builds. Those pharmacy files remain untouched; build dashboard services by name/profile while their owners resolve the whole-stack build issue.
+- Docker/Fabric runtime is still unverified by the agent. The user’s most recent terminal output showed an empty `ehr_network` and no running peer0 container. No agent started Fabric or other services.
+
+Earlier phase notes below document what was true at the end of those phases; this current status supersedes their forward-looking statements that Phases 5/6 were still pending.
+
 ## Phase 1 update
 
 Added an isolated `ehr-backend-v3/dashboard-api` foundation. It includes an Express health service, exact-version JWT verification, a file-based default-deny role matrix, topology configuration, event envelope validation, a proposal-derived event registry, response-shape contracts, and Node built-in tests. It does not connect to Fabric, a database, or other services yet.

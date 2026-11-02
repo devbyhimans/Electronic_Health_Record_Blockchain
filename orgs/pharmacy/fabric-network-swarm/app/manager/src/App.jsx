@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Search, Plus, User, Activity, RefreshCw, Users, ClipboardList, ShieldCheck, DollarSign, ExternalLink, Package, Server, Database, Info } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './styles.css';
+import ThemeToggle from './ThemeToggle.jsx';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/pharmacy';
 
@@ -12,13 +13,6 @@ const api = async (path, opts = {}) => {
   return json;
 };
 
-// Docker Swarm Overlay Data (Static Info)
-const SWARM_LAYOUT = [
-  { pc: 'PC1 (Manager)', host: '100.124.176.94', containers: ['CA', 'Orderer', 'Peer0', 'CouchDB0', 'Backend', 'IPFS Daemon', 'Vite Portals (3001-3004)'] },
-  { pc: 'PC2 (Worker)', host: '100.83.121.98', containers: ['Peer1', 'CouchDB1'] },
-  { pc: 'PC3 (Worker)', host: '100.117.138.55', containers: ['Peer2', 'CouchDB2'] }
-];
-
 export default function App() {
   const [activeTab, setActiveTab] = useState('pulse');
   const [network, setNetwork] = useState({ nodes: {}, ipfs: 'CHECKING' });
@@ -27,6 +21,7 @@ export default function App() {
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+  const networkAvailable = Object.values(network.nodes).some(height => typeof height === 'number');
 
   // New Employee Form
   const [newEmp, setNewEmp] = useState({ userId: '', role: 'billing', name: '', dept: 'Internal' });
@@ -111,6 +106,7 @@ export default function App() {
           </button>
           <div className={`badge ${network.ipfs === 'UP' ? 'badge-green' : 'badge-red'}`}>IPFS: {network.ipfs}</div>
         </div>
+              <ThemeToggle />
       </nav>
 
       <main className="app-container">
@@ -134,9 +130,9 @@ export default function App() {
                       Object.entries(network.nodes).map(([id, height]) => {
                         const s = getNodeStatus(height);
                         return (
-                          <div key={id} className="glass-card" style={{ background: 'rgba(0,0,0,0.2)', padding: '1.5rem', border: 'none' }}>
+                          <div key={id} className="glass-card peer-metric" style={{ padding: '1.5rem', border: 'none' }}>
                             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                              <span style={{ color: '#94a3b8', textTransform: 'uppercase', fontSize: '0.7rem' }}>{id}</span>
+                              <span style={{ color: 'var(--text-secondary)', textTransform: 'uppercase', fontSize: '0.7rem' }}>{id}</span>
                               <div className={`badge ${s.cls}`}>{s.label}</div>
                             </div>
                             <div style={{ fontSize: '2rem', fontWeight: 800, marginTop: '1rem', color: s.color }}>
@@ -148,32 +144,21 @@ export default function App() {
                     )}
                   </div>
 
-                  <h3 style={{ marginTop: '3rem' }}><Server size={20} color="#3b82f6" /> Swarm Architecture Distribution</h3>
-                  <table style={{ marginTop: '1.5rem' }}>
-                    <thead><tr><th>Physical PC</th><th>Host IP</th><th>Deployed Containers</th></tr></thead>
-                    <tbody>
-                      {SWARM_LAYOUT.map((row, idx) => (
-                        <tr key={idx}>
-                          <td style={{ fontWeight: 600 }}>{row.pc}</td>
-                          <td style={{ fontFamily: 'monospace', color: '#94a3b8' }}>{row.host}</td>
-                          <td>
-                            <div style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem' }}>
-                              {row.containers.map((c, ci) => <span key={ci} className="badge" style={{ background: 'rgba(255,255,255,0.05)', color: '#94a3b8', fontSize: '0.65rem' }}>{c}</span>)}
-                            </div>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <div className="glass-card topology-note" role="status" style={{ marginTop: '1.5rem', padding: '1.2rem' }}>
+                    <h4><Server size={18} /> Network topology</h4>
+                    <p>{networkAvailable
+                      ? 'The live API reports peer heights. This deployment does not provide topology placement data.'
+                      : 'No live peer heights are available. Peer placement is unverified and is not shown.'}</p>
+                  </div>
                 </div>
 
                 <div className="glass-card">
                   <h3><Info size={20} color="#eab308" /> System Summary</h3>
                   <div style={{ marginTop: '2rem', display: 'flex', flexDirection: 'column', gap: '1.5rem' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#94a3b8' }}>IPFS Cluster</span><div className={`badge ${network.ipfs === 'UP' ? 'badge-green' : 'badge-red'}`}>{network.ipfs}</div></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#94a3b8' }}>Staff IDs</span><span style={{ fontWeight: 800 }}>{employees.length}</span></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#94a3b8' }}>Tx Count</span><span style={{ fontWeight: 800, color: '#10b981' }}>{auditLog.length}</span></div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: '#94a3b8' }}>Stock Lines</span><span style={{ fontWeight: 800, color: '#eab308' }}>{inventory.length}</span></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-secondary)' }}>IPFS Cluster</span><div className={`badge ${network.ipfs === 'UP' ? 'badge-green' : 'badge-red'}`}>{network.ipfs}</div></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-secondary)' }}>Staff IDs</span><span style={{ fontWeight: 800 }}>{networkAvailable ? employees.length : '—'}</span></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-secondary)' }}>Tx Count</span><span style={{ fontWeight: 800, color: '#10b981' }}>{networkAvailable ? auditLog.length : '—'}</span></div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between' }}><span style={{ color: 'var(--text-secondary)' }}>Stock Lines</span><span style={{ fontWeight: 800, color: '#eab308' }}>{networkAvailable ? inventory.length : '—'}</span></div>
                   </div>
                 </div>
               </div>
@@ -194,7 +179,8 @@ export default function App() {
                       <option value="inventory">Inventory Officer</option>
                       <option value="manager">Administrator</option>
                     </select>
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>Authorize Identity</button>
+                    {!networkAvailable && <p role="status" className="connection-note">Not connected · staff changes are disabled until live peer data is available.</p>}
+                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={!networkAvailable}>Authorize Identity</button>
                   </form>
                 </div>
                 <div className="glass-card">
@@ -210,6 +196,7 @@ export default function App() {
                           <td>{emp.isActive ? <div className="pulse-circle" style={{ width: '8px', height: '8px' }}></div> : 'Inactive'}</td>
                         </tr>
                       ))}
+                      {!employees.length && <tr><td colSpan="4">{networkAvailable ? 'No staff records returned.' : 'Not connected · staff data unavailable.'}</td></tr>}
                     </tbody>
                   </table>
                 </div>
@@ -234,6 +221,7 @@ export default function App() {
                         <td>{item.quantity <= 50 ? <span className="badge badge-red">Low Stock</span> : <span className="badge badge-green">Healthy</span>}</td>
                       </tr>
                     ))}
+                    {!inventory.length && <tr><td colSpan="5">{networkAvailable ? 'No inventory records returned.' : 'Not connected · inventory data unavailable.'}</td></tr>}
                   </tbody>
                 </table>
               </div>
@@ -256,6 +244,7 @@ export default function App() {
                         <td><code style={{ fontSize: '0.7rem' }}>{log.empId}</code></td>
                       </tr>
                     ))}
+                    {!auditLog.length && <tr><td colSpan="5">{networkAvailable ? 'No audit records returned.' : 'Not connected · audit data unavailable.'}</td></tr>}
                   </tbody>
                 </table>
               </div>

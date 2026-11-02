@@ -363,6 +363,20 @@ function buildNetwork(config) {
       ? mockHealthStatus(events, orderer.id, ['ORDERER_STATUS_CHANGED', 'ORDERER_DOWN']) : null;
     return { id: orderer.id, status: observedMockStatus || stateForHealth(health?.status || 'NOT_CONFIGURED', health?.lastCheckedAt || null) };
   });
+  const services = (config.topology.healthTargets || [])
+    .filter((target) => ['api', 'lab', 'ipfs', 'pharmacy'].includes(target.kind))
+    .map((target) => {
+      const health = config.healthPoller?.states?.get(target.id);
+      return {
+        id: target.id,
+        component: target.component,
+        kind: target.kind,
+        org: target.org,
+        configured: Boolean(target.url),
+        status: stateForHealth(health?.status || (target.url ? 'UNKNOWN' : 'NOT_CONFIGURED'), health?.lastCheckedAt || null),
+        lastCheckedAt: health?.lastCheckedAt || null,
+      };
+    });
   const organizations = config.topology.organizations.map((organization) => ({
     id: organization.id,
     role: organization.role,
@@ -372,10 +386,14 @@ function buildNetwork(config) {
       : statusInfo('NOT_CONNECTED', 'No peer operations health source is connected.'),
   }));
   return {
+    status: collectorStatus.status === 'CONNECTED'
+      ? statusInfo('OK', null)
+      : statusInfo('DEGRADED', 'Application health checks may be available, but Fabric block collection is not connected.'),
     channel: config.topology.channel || null,
     organizations,
     peers,
     orderers,
+    services,
     channels,
     chaincodes,
     ledgerLag: { value: null, availability: 'NOT_AVAILABLE', status: statusInfo('NOT_CONNECTED', 'Peer heights are not available to compare with collector height.', null) },
@@ -385,9 +403,20 @@ function buildNetwork(config) {
 
 function buildNetworkSummary(config) {
   const network = buildNetwork(config);
+  const configuredServices = network.services.filter((service) => service.configured);
+  const checkedServices = configuredServices.filter((service) => service.lastCheckedAt);
+  const healthyServices = checkedServices.filter((service) => service.status.state === 'OK');
+  const serviceState = !checkedServices.length
+    ? statusInfo('NOT_CONNECTED', 'No configured service health checks have completed.')
+    : healthyServices.length < checkedServices.length
+      ? statusInfo('DEGRADED', 'One or more checked service health endpoints are down.', checkedServices.map((service) => service.lastCheckedAt).sort().at(-1))
+      : checkedServices.length < configuredServices.length
+        ? statusInfo('CHECKING', 'Some configured service health checks have not completed yet.', checkedServices.map((service) => service.lastCheckedAt).sort().at(-1))
+        : statusInfo('OK', null, checkedServices.map((service) => service.lastCheckedAt).sort().at(-1));
   return {
     configuredPeers: { value: network.peers.length, status: statusInfo('OK', 'Count is from topology configuration, not live peer health.') },
     connectedPeers: { value: network.peers.some((peer) => peer.status.state === 'OK') ? network.peers.filter((peer) => peer.status.state === 'OK').length : null, status: network.peers.some((peer) => peer.status.state === 'OK') ? statusInfo('OK', null, null, network.peers.some((peer) => peer.status.mock)) : statusInfo('NOT_CONNECTED', 'No peer operations endpoint is connected.') },
+    serviceHealth: { value: checkedServices.length ? healthyServices.length : null, checked: checkedServices.length, total: configuredServices.length, status: serviceState },
     ledgerLag: network.ledgerLag,
   };
 }
@@ -420,12 +449,15 @@ function buildIpfsSummary(config) {
     ? mockHealthStatus(events, 'ipfs-service', ['IPFS_STATUS_CHANGED', 'IPFS_NODE_DOWN']) || healthTargetStatus(config, 'ipfs-service')
     : healthTargetStatus(config, 'ipfs-service');
   const hasData = events.length > 0;
+  const uploads = events.filter((event) => event.eventType === 'IPFS_UPLOAD_COMPLETED');
+  const failures = events.filter((event) => event.eventType === 'IPFS_UPLOAD_FAILED');
+  const resolutionFailures = events.filter((event) => event.eventType === 'IPFS_RESOLUTION_FAILED');
   return {
     status: target,
     metrics: {
-      uploads: hasData ? events.filter((event) => event.eventType === 'IPFS_UPLOAD_COMPLETED').length : null,
-      failures: hasData ? events.filter((event) => event.eventType === 'IPFS_UPLOAD_FAILED').length : null,
-      cidResolutionFailures: hasData ? events.filter((event) => event.eventType === 'IPFS_RESOLUTION_FAILED').length : null,
+      uploads: uploads.length ? uploads.length : null,
+      failures: failures.length ? failures.length : null,
+      cidResolutionFailures: resolutionFailures.length ? resolutionFailures.length : null,
       status: hasData ? statusInfo('OK', null, null, events.some((event) => event.mock)) : statusInfo('NO_DATA', 'No IPFS event producers have supplied counts.'),
       ...(hasData && events.some((event) => event.mock) ? { mockEventsCount: events.filter((event) => event.mock).length } : {}),
       storageUsage: { value: null, availability: 'DEFERRED', status: statusInfo('NOT_CONNECTED', 'The existing IPFS health endpoint does not expose storage usage.') },

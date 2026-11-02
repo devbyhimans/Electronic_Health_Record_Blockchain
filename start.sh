@@ -1,64 +1,95 @@
 #!/usr/bin/env bash
-# ==============================================================================
-# start.sh — Launch Complete EHR Blockchain Network & Application Stack
-# ==============================================================================
+# Start the existing Fabric network and application services without resetting
+# crypto material, channel data, chaincode, or Docker volumes.
 set -euo pipefail
 
 ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export PATH="${ROOT_DIR}/bin:${PATH}"
+FABRIC_DIR="${ROOT_DIR}/orgs/hospital/EHR_hospitalOrg-main/ehr-network"
+FABRIC_COMPOSE="${FABRIC_DIR}/docker/docker-compose-network.yaml"
+CA_COMPOSE="${FABRIC_DIR}/docker/docker-compose-ca.yaml"
+APP_COMPOSE="${ROOT_DIR}/docker-compose.yaml"
 
-HOSP_NET="${ROOT_DIR}/orgs/hospital/EHR_hospitalOrg-main/ehr-network"
-
-echo "════════════════════════════════════════════════════"
-echo "      Starting EHR Blockchain Network & Stack       "
-echo "════════════════════════════════════════════════════"
-
-# 1. Start Fabric Network
-if ! docker ps --filter "name=peer0.hospital.example.com" --format "{{.ID}}" | grep -q .; then
-  echo "[1/3] Bringing up Hyperledger Fabric network..."
-  (cd "${HOSP_NET}" && bash scripts/network-up.sh)
-else
-  echo "[1/3] Hyperledger Fabric network is already running."
+if ! command -v docker >/dev/null 2>&1 || ! docker compose version >/dev/null 2>&1; then
+  echo "Docker Engine and the Docker Compose plugin are required." >&2
+  exit 1
+fi
+if ! docker info >/dev/null 2>&1; then
+  echo "Docker is not accessible. Start Docker and ensure your account can run 'docker ps'." >&2
+  exit 1
+fi
+if [[ ! -f "${FABRIC_COMPOSE}" || ! -f "${CA_COMPOSE}" || ! -f "${APP_COMPOSE}" ]]; then
+  echo "Required Fabric or application Compose file is missing." >&2
+  exit 1
 fi
 
-# 2. Deploy Chaincode if not yet committed
-echo "[2/3] Verifying chaincode deployment..."
-if ! (cd "${HOSP_NET}" && peer lifecycle chaincode querycommitted -C ehrchannel -n ehr 2>/dev/null | grep -q "Version: 1.0"); then
-  echo "  [*] Deploying EHR chaincode..."
-  (cd "${HOSP_NET}" && bash scripts/deployChaincode.sh \
-    --channel ehrchannel \
-    --chaincode-name ehr \
-    --chaincode-path ../ehr-chaincode-v3 \
-    --version 1.0 \
-    --sequence 1)
-else
-  echo "  ✓ EHR chaincode is committed and active on ehrchannel."
+for identity_dir in \
+  "${FABRIC_DIR}/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/msp" \
+  "${FABRIC_DIR}/organizations/peerOrganizations/hospital.example.com/peers/peer0.hospital.example.com/msp"; do
+  if [[ ! -d "${identity_dir}" ]]; then
+    echo "Existing Fabric identity material was not found at: ${identity_dir}" >&2
+    echo "This startup script will not enroll identities or initialize a network." >&2
+    echo "Use the team's first-time Fabric setup procedure, then run ./start.sh again." >&2
+    exit 1
+  fi
+done
+
+for ca_state in \
+  "${FABRIC_DIR}/organizations/ordererOrganizations/example.com/ca" \
+  "${FABRIC_DIR}/organizations/peerOrganizations/hospital.example.com/ca" \
+  "${FABRIC_DIR}/organizations/peerOrganizations/diagnostic.example.com/ca" \
+  "${FABRIC_DIR}/organizations/peerOrganizations/provider.example.com/ca"; do
+  if [[ ! -s "${ca_state}/ca-cert.pem" || ! -s "${ca_state}/fabric-ca-server.db" ]]; then
+    echo "Existing Fabric CA state was not found at: ${ca_state}" >&2
+    echo "This startup script will not initialize or replace a certificate authority." >&2
+    exit 1
+  fi
+done
+
+if ! docker network inspect ehr_network >/dev/null 2>&1; then
+  echo "Creating the shared Docker network ehr_network…"
+  docker network create ehr_network >/dev/null
 fi
 
-# 3. Start Backend APIs & Frontends
-echo "[3/3] Starting backend services and web applications..."
-"${ROOT_DIR}/start-sequential.sh" start
+echo "[1/6] Starting existing Fabric certificate authorities…"
+docker compose -f "${CA_COMPOSE}" up -d
 
-echo ""
-echo "════════════════════════════════════════════════════"
-echo "        EHR System is LIVE and Accessible           "
-echo "════════════════════════════════════════════════════"
-echo "  Hospital Web Portal : http://localhost:5173"
-echo "  Patient Web Portal  : http://localhost:5174"
-echo "  IPFS Web Gateway    : http://localhost:8090"
-echo "  IPFS Node API       : http://localhost:5001"
-echo ""
-echo "  Backend Microservices:"
-echo "    - IPFS Service    : http://localhost:4006/health"
-echo "    - Reception/Admin : http://localhost:4001"
-echo "    - Doctor API      : http://localhost:4002"
-echo "    - Nurse/Pharmacy  : http://localhost:4003"
-echo "    - Lab/Claims API  : http://localhost:4004"
-echo "    - Patient API     : http://localhost:4005"
-echo ""
-echo "  Default Login Credentials:"
-echo "    - Receptionist    : receptionist / password123"
-echo "    - Doctor          : doctor / password123"
-echo "    - Pharmacist      : pharmacist / password123"
-echo "    - Admin           : hospitaladmin / password123"
-echo "════════════════════════════════════════════════════"
+echo "[2/6] Starting existing Fabric peers and orderer (no channel or chaincode changes)…"
+docker compose -f "${FABRIC_COMPOSE}" up -d
+
+echo "[3/6] Starting hospital, patient, lab, IPFS, and Nginx services…"
+docker compose -f "${APP_COMPOSE}" up -d --build \
+  h-ipfs-service h-peer0-api h-peer1-api h-peer2-api h-extorg-api h-patient-api \
+  h-hospital-portal h-patient-portal l-node-gateway nginx
+
+if [[ -f "${ROOT_DIR}/orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/dashboard-api/.env" ]]; then
+  echo "[4/6] Starting the dashboard API and portal…"
+  docker compose -f "${APP_COMPOSE}" --profile dashboard up -d --build h-dashboard-api h-dashboard-portal
+else
+  echo "[4/6] Dashboard skipped: configure dashboard-api/.env from .env.example to enable it."
+fi
+
+echo "[5/6] Starting the six separate pharmacy apps…"
+if docker compose -f "${APP_COMPOSE}" up -d --build p-backend; then
+  echo "Pharmacy API container started."
+else
+  echo "WARNING: Pharmacy API did not start; continuing with the other services." >&2
+fi
+if docker compose -f "${APP_COMPOSE}" up -d --build \
+  p-manager p-employee p-inventory p-billing p-frontend; then
+  echo "Pharmacy portal containers started."
+else
+  echo "WARNING: One or more pharmacy portals did not start. Other services remain running." >&2
+  echo "See: docker compose logs p-manager p-employee p-inventory p-billing p-frontend" >&2
+fi
+echo "Pharmacy patient portal skipped: this checkout has no app source under its src directory."
+
+echo "[6/6] Checking service containers…"
+docker compose -f "${APP_COMPOSE}" --profile dashboard ps
+echo
+echo "Workspace:       http://localhost/"
+echo "Hospital portal: http://localhost:5173/"
+echo "Patient portal:  http://localhost:5174/"
+echo "System dashboard: http://localhost/dashboard/"
+echo "Lab service:     http://localhost/lab/"
+echo
+echo "The home page checks live service endpoints. Unavailable integrations stay marked unavailable."

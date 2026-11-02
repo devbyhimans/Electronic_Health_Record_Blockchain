@@ -7,6 +7,7 @@ const Dashboard = ({ onAddRecord, currentUser }) => {
   const [records, setRecords] = useState([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [loading, setLoading] = useState(true);
+  const [recordsUnavailable, setRecordsUnavailable] = useState(false);
 
   useEffect(() => {
     fetchRecords();
@@ -15,11 +16,18 @@ const Dashboard = ({ onAddRecord, currentUser }) => {
   const fetchRecords = async () => {
     setLoading(true);
     try {
-      const resp = await fetch(`${API_BASE_URL}/all?user=${currentUser}`);
-      const data = await resp.json();
-      setRecords(Array.isArray(data) ? data : []);
-    } catch (e) {
-      console.error(e);
+      const resp = await fetch(`${API_BASE_URL}/api/inventory`).catch(() => null);
+      if (resp && resp.ok) {
+        const data = await resp.json();
+        setRecords(Array.isArray(data) ? data : []);
+        setRecordsUnavailable(false);
+      } else {
+        setRecords([]);
+        setRecordsUnavailable(true);
+      }
+    } catch {
+      setRecords([]);
+      setRecordsUnavailable(true);
     } finally {
       setLoading(false);
     }
@@ -39,7 +47,7 @@ const Dashboard = ({ onAddRecord, currentUser }) => {
           </h1>
           <p style={{ color: '#64748b', fontSize: '0.9rem' }}>Secured by Pharmacy MedBlock Consortium</p>
         </div>
-        <button className="btn btn-primary" onClick={onAddRecord}>
+        <button className="btn btn-primary" onClick={onAddRecord} disabled={recordsUnavailable}>
           <Plus size={20} /> New Record
         </button>
       </div>
@@ -60,6 +68,11 @@ const Dashboard = ({ onAddRecord, currentUser }) => {
       {loading ? (
         <div style={{ textAlign: 'center', padding: '4rem' }}>
           <Activity className="animate-pulse" size={48} color="#10b981" />
+        </div>
+      ) : recordsUnavailable ? (
+        <div className="glass-card" role="status" style={{ padding: '2rem', textAlign: 'center' }}>
+          <h2>Records service unavailable</h2>
+          <p>Records are hidden until the pharmacy API responds. No sample patient data is shown.</p>
         </div>
       ) : (
         <div className="grid">
@@ -103,6 +116,12 @@ const Dashboard = ({ onAddRecord, currentUser }) => {
               </motion.div>
             ))}
           </AnimatePresence>
+          {filteredRecords.length === 0 && (
+            <div className="glass-card" role="status" style={{ padding: '2rem', textAlign: 'center' }}>
+              <h2>No records available</h2>
+              <p>The connected pharmacy service returned no records.</p>
+            </div>
+          )}
         </div>
       )}
     </motion.div>

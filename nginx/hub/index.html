@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f4f7f8" />
+    <meta name="description" content="A single, secure starting point for the EHR services." />
+    <title>EHR Workspace</title>
+    <link rel="stylesheet" href="/hub.css?v=2" />
+    <script defer src="/hub.js?v=3"></script>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to services</a>
+    <header class="topbar">
+      <a class="brand" href="/" aria-label="EHR Workspace home">
+        <span class="brand-mark" aria-hidden="true"><svg viewBox="0 0 32 32"><path d="M14 5h4v9h9v4h-9v9h-4v-9H5v-4h9z"/></svg></span>
+        <span><strong>care<span>grid</span></strong><small>HEALTH SYSTEM WORKSPACE</small></span>
+      </a>
+      <div class="topbar-right"><span class="environment"><i></i> LOCAL ENVIRONMENT</span><button class="theme-switch" id="theme-toggle" type="button" aria-label="Switch to dark mode" aria-pressed="false"><span aria-hidden="true">☾</span><span>Dark</span></button><button class="refresh" id="refresh" type="button" aria-label="Refresh service statuses" title="Refresh service statuses"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7v5h-5M4 17v-5h5m10-1a7 7 0 0 0-12.1-4.8L4 8m16 8-2.9 2.8A7 7 0 0 1 5 13"/></svg></button></div>
+    </header>
+
+    <main id="main" class="shell">
+      <section class="welcome" aria-labelledby="welcome-title">
+        <div class="welcome-copy"><p class="eyebrow">ONE WORKSPACE. CONNECTED SERVICES.</p><h1 id="welcome-title">Good day. Where would you like to go?</h1><p class="lead">Open a service below. Each workspace keeps its own sign-in and permissions.</p></div>
+        <div class="system-card"><span class="system-icon" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 12h4l2-6 4 12 2-6h6"/></svg></span><div><span class="muted">SYSTEM CHECK</span><strong id="system-state">Checking services</strong><small id="system-updated">Checking availability…</small></div><span class="system-dot checking" id="system-dot" aria-hidden="true"></span></div>
+      </section>
+
+      <nav class="quick-nav" aria-label="Workspace sections"><a href="#care">Care &amp; records <span>02</span></a><a href="#operations">Operations <span>02</span></a><a href="#partners">Partner services <span>08</span></a></nav>
+
+      <section class="service-section" id="care" aria-labelledby="care-title"><div class="section-heading"><div><p class="eyebrow">CLINICAL WORKSPACES</p><h2 id="care-title">Care &amp; records</h2></div><p>Choose the workspace that matches your role.</p></div><div class="cards">
+        <article class="service-card featured"><div class="card-top"><span class="service-icon hospital" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 20V7h5V4h6v3h5v13H4Zm8-13v4m-2-2h4M8 14v2m8-2v2"/></svg></span><span class="status" data-check="hospital"><i></i><span>Checking</span></span></div><h3>Hospital workspace</h3><p>Clinical and administrative workflows for hospital teams.</p><div class="card-footer"><span>Staff portal</span><a href="http://localhost:5173/" target="_blank" rel="noopener">Open hospital portal <span aria-hidden="true">↗</span></a></div></article>
+        <article class="service-card"><div class="card-top"><span class="service-icon patient" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M12 12a4 4 0 1 0 0-8 4 4 0 0 0 0 8Zm-7 9a7 7 0 0 1 14 0M19 8v6m-3-3h6"/></svg></span><span class="status" data-check="patient"><i></i><span>Checking</span></span></div><h3>Patient portal</h3><p>Patient self-service, consent, and personal health timeline.</p><div class="card-footer"><span>Patient access</span><a href="http://localhost:5174/" target="_blank" rel="noopener">Open patient portal <span aria-hidden="true">↗</span></a></div></article>
+      </div></section>
+
+      <section class="service-section" id="operations" aria-labelledby="operations-title"><div class="section-heading"><div><p class="eyebrow">MONITORING &amp; INFRASTRUCTURE</p><h2 id="operations-title">Operations</h2></div><p>Checks confirm an HTTP response, not a connected Fabric peer.</p></div><div class="cards">
+        <article class="service-card"><div class="card-top"><span class="service-icon dashboard" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 15l3-4 3 2 5-7"/></svg></span><span class="status" data-check="dashboard"><i></i><span>Checking</span></span></div><h3>System dashboard</h3><p>Read-only overview of service status, network activity, and events.</p><div class="card-footer"><span>Operations view</span><a href="/dashboard/">Open system dashboard <span aria-hidden="true">→</span></a></div></article>
+        <article class="service-card"><div class="card-top"><span class="service-icon ipfs" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m12 3 8 4.5v9L12 21l-8-4.5v-9L12 3Zm0 0v9m8-4.5-8 4.5m-8-4.5 8 4.5m0 0v9"/></svg></span><span class="status" data-check="ipfs"><i></i><span>Checking</span></span></div><h3>Document service</h3><p>IPFS connection and document storage gateway.</p><div class="card-footer"><span>Infrastructure</span><a href="http://localhost:8090/" target="_blank" rel="noopener">Open IPFS gateway <span aria-hidden="true">↗</span></a></div></article>
+      </div></section>
+
+      <section class="service-section" id="partners" aria-labelledby="partners-title"><div class="section-heading"><div><p class="eyebrow">CONNECTED ORGANIZATIONS</p><h2 id="partners-title">Partner services</h2></div><p>Availability is shown only when a live check responds.</p></div><div class="cards partner-cards">
+        <article class="service-card compact"><div class="card-top"><span class="service-icon lab" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M9 3h6m-5 0v6l-5 9a2 2 0 0 0 2 3h10a2 2 0 0 0 2-3l-5-9V3m-7 11h12"/></svg></span><span class="status" data-check="lab"><i></i><span>Checking</span></span></div><h3>Laboratory</h3><p>Lab gateway and diagnostic partner.</p><div class="card-footer"><span>Partner portal</span><a href="/lab/" target="_blank" rel="noopener">Open lab service <span aria-hidden="true">↗</span></a></div></article>
+        <article class="service-card compact"><div class="card-top"><span class="service-icon pharmacy" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 10h16v10H4zM3 10l2-6h14l2 6M12 13v4m-2-2h4"/></svg></span><span class="status" data-check="pharmacy"><i></i><span>Checking</span></span></div><h3>Pharmacy workspace</h3><p>Medication services and pharmacy team tools.</p><div class="card-footer"><span>Separate pharmacy access</span><a href="http://localhost:5175/" target="_blank" rel="noopener">Open pharmacy portal <span aria-hidden="true">↗</span></a></div></article>
+        <article class="service-card compact"><div class="card-top"><span class="service-icon data" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8m-8 3h8m-8 3h5"/></svg></span><span class="status neutral"><i></i><span>Not connected</span></span></div><h3>Digital locker</h3><p>External document integration is not connected in this deployment.</p><div class="card-footer"><span>Integration</span><span class="disabled-link">Unavailable</span></div></article>
+      </div>
+        <details class="more-services"><summary>More pharmacy workspaces <span>4 available · 1 source missing</span></summary><div class="more-grid"><a href="http://localhost:3001/" target="_blank" rel="noopener">Pharmacy manager <span>↗</span></a><a href="http://localhost:3002/" target="_blank" rel="noopener">Pharmacy employee <span>↗</span></a><a href="http://localhost:3003/" target="_blank" rel="noopener">Inventory <span>↗</span></a><a href="http://localhost:3005/" target="_blank" rel="noopener">Billing <span>↗</span></a><span class="unavailable-service">Pharmacy patient · source files missing</span></div></details>
+      </section>
+
+      <aside class="privacy-note"><span class="privacy-icon" aria-hidden="true">✓</span><p><strong>Privacy by design</strong><br />This home page shows service availability only. It does not display patient records or clinical information.</p></aside>
+    </main>
+    <footer><span>caregrid · EHR workspace</span><span>Local academic environment · English</span></footer>
+  </body>
+</html>

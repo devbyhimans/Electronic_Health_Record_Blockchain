@@ -26,7 +26,8 @@ done
 echo "[2/4] Verifying Docker socket access..."
 if ! docker ps >/dev/null 2>&1; then
   echo "[-] Cannot connect to Docker daemon without sudo."
-  echo "    Run: sudo chmod 666 /var/run/docker.sock"
+  echo "    Run: sudo usermod -aG docker \"$USER\" and then log out and back in."
+  echo "    Do not make the Docker socket world-writable."
   exit 1
 fi
 echo "  ✓ Docker daemon is active and accessible."
