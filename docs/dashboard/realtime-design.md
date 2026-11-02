@@ -27,4 +27,4 @@ Clients may supply `lastEventId` to replay later retained events, or `since` to 
 
 ## Browser use
 
-The browser posts the JWT in an Authorization header to obtain a ticket, then passes only that short-lived ticket in the WS/SSE URL because those browser APIs cannot set the header. The existing UI integration remains a later phase. Local tokens are stored under the dashboard's own storage keys; same-origin hospital-token acceptance remains server-side and read-only.
+The browser posts the JWT in an Authorization header to obtain a ticket, then passes only that short-lived ticket in the WS/SSE URL because those browser APIs cannot set the header. The dashboard portal uses this flow for its live connection and requests a fresh ticket after reconnect. Server-side authorization is applied to REST, WebSocket, SSE, and replay. Local tokens are stored under the dashboard's own storage keys; same-origin hospital-token acceptance remains server-side and read-only.

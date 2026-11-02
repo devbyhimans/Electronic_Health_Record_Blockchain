@@ -50,6 +50,19 @@ html[data-theme=dark]{
 }
 html[data-theme=dark] body{background-color:#080d1c!important;background-image:radial-gradient(ellipse at 12% 8%,rgba(48,91,190,.2),transparent 36%),radial-gradient(ellipse at 88% 18%,rgba(139,67,224,.13),transparent 34%),linear-gradient(145deg,#080d1c,#0a1224 62%,#0b1020)!important;color:#f0f5ff!important}
 html[data-theme=dark] .min-h-screen.bg-gradient-to-br{background:radial-gradient(ellipse at 15% 14%,rgba(37,156,215,.21),transparent 36%),radial-gradient(ellipse at 86% 78%,rgba(147,74,231,.19),transparent 38%),linear-gradient(145deg,#080d1c,#0a1224 62%,#0b1020)!important;color:#f0f5ff!important}
+
+/* Shared CareOps patient workspace styling */
+html[data-theme=light] body{background:#f3f6fb!important;color:#17243b;font-family:Inter,"Segoe UI",system-ui,sans-serif}
+html[data-theme=light] .min-h-screen{background-color:#f3f6fb!important}
+html[data-theme=light] aside{background:#fff!important;border-color:#e4eaf2!important;color:#53627a}
+html[data-theme=light] aside .text-white{color:#263752!important}
+html[data-theme=light] aside .text-white\/60{color:#71809a!important}
+html[data-theme=light] aside .border-white\/10{border-color:#edf1f6!important}
+html[data-theme=light] aside .bg-white\/10{background:#f3f6fb!important}
+html[data-theme=light] aside a.bg-white\/20{background:#eaf1ff!important;color:#1d4ed8!important;box-shadow:inset 3px 0 #3476db}
+html[data-theme=light] aside a:hover{background:#f1f5fb!important;color:#1d4ed8!important}
+html[data-theme=light] main article,html[data-theme=light] main section>div.bg-white,html[data-theme=light] main .rounded-xl.border{border-radius:18px;box-shadow:0 8px 24px #3349690a}
+html[data-theme=light] main input:focus,html[data-theme=light] main select:focus,html[data-theme=light] main textarea:focus{outline:none;box-shadow:0 0 0 4px #2563eb20;border-color:#6b9df5}
 html[data-theme=dark] .bg-white,html[data-theme=dark] [class~="bg-white/80"],html[data-theme=dark] [class~="bg-white/90"],html[data-theme=dark] .bg-slate-50{background-color:#111a30!important}
 html[data-theme=dark] .bg-slate-100,html[data-theme=dark] .bg-slate-200{background-color:#182541!important}
 html[data-theme=dark] .text-slate-900,html[data-theme=dark] .text-slate-800,html[data-theme=dark] .text-slate-700{color:#edf3ff!important}
@@ -63,3 +76,6 @@ html[data-theme=dark] .theme-toggle{position:fixed;right:20px;bottom:20px;z-inde
 html[data-theme=dark] .theme-toggle:hover{border-color:#a5ffef;color:#fff;box-shadow:0 0 0 1px rgba(84,241,220,.22),0 0 28px rgba(84,241,220,.28)}
 html[data-theme=light] .theme-toggle{position:fixed;right:20px;bottom:20px;z-index:12000}
 @media(max-width:640px){html[data-theme=dark] .theme-toggle,html[data-theme=light] .theme-toggle{right:14px;bottom:14px}}
+
+/* Theme control stays in the app header/sidebar flow; it never overlays page content. */
+.theme-toggle{position:static!important;inset:auto!important;z-index:auto!important;flex:0 0 auto;box-shadow:0 4px 14px rgba(30,55,90,.12)}

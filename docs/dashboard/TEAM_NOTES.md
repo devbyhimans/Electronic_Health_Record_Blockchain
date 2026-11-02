@@ -1,99 +1,42 @@
-# Group 1 Dashboard — Team Notes
+# Group 1 dashboard team notes
 
-## Current handoff status (2026-11-03)
+## Current implementation
 
-The Phase 1–4 backend work is committed locally. Phase 5 portal wiring and Phase 6 optional deployment wiring are implemented in the current worktree and are awaiting their dashboard-only commits. The full current state, run commands, verification record, and remaining work are in [`PROJECT_HANDOFF.md`](PROJECT_HANDOFF.md).
+The dashboard API, portal integration, and optional Compose/Nginx wiring are in the repository. Root `./start.sh` starts `h-dashboard-api` and `h-dashboard-portal` only when `dashboard-api/.env` exists. The dashboard is read-only against Fabric. It does not manage Docker or alter the Fabric network.
 
-- The dashboard is opt-in: Compose services use the `dashboard` profile; host startup requires `ENABLE_DASHBOARD=true`. Default Compose and `start.sh` behavior should remain unchanged.
-- Dashboard Compose routes are `/dashboard/` and `/api/dashboard/`; `/internal/events` is not routed through Nginx. Nginx access logging is disabled for `/api/dashboard/` so stream-ticket query strings are not logged.
-- Portal login uses `ehr_dashboard_token` and `ehr_dashboard_user`; same-origin `ehr_hospital_token` reads are production-only, explicitly enabled, and never mutate the hospital token.
-- The API ignores documented sample JWT placeholders. The operator must enter the actual peer0 signing secret locally in the dashboard-owned `.env` for login. Never copy other service `.env` files or place secret values in Git/chat.
-- The user’s root Compose build failed on existing pharmacy Alpine/musl Rolldown package builds. Those pharmacy files remain untouched; build dashboard services by name/profile while their owners resolve the whole-stack build issue.
-- Docker/Fabric runtime is still unverified by the agent. The user’s most recent terminal output showed an empty `ehr_network` and no running peer0 container. No agent started Fabric or other services.
+API port: `4010` (host-bound to loopback by Compose). Portal: `5176`, served through Nginx at `/dashboard/`. Public dashboard API prefix: `/api/dashboard/`. Internal ingest route `POST /internal/events` is not exposed by Nginx.
 
-Earlier phase notes below document what was true at the end of those phases; this current status supersedes their forward-looking statements that Phases 5/6 were still pending.
+## Authentication and role policy
 
-## Phase 1 update
+- The portal calls the hospital peer0 login route and stores its own `ehr_dashboard_token` and `ehr_dashboard_user` keys. On 401 it returns to its dashboard login screen.
+- API verifies HS256 only with required claims `userId`, `role`, `mspId`, `peer`, and `exp`.
+- Keys come only from the dashboard's own environment: `DASHBOARD_JWT_SECRETS` (ordered list), falling back to dashboard-local `JWT_SECRET`.
+- Extorg/lab/provider token keys are optional. Add the appropriate value to the operator's local dashboard secret list to enable those tokens. Do not read/copy another service's `.env`, place keys in Git, or paste secrets in chat.
+- `config/authorization.json` is the server-side source of truth, default deny. Admin has aggregate views. Doctor is limited to clinical/history/governance agents and peer1; nurse to the nurse logical scope/peer2; pharmacist to pharmacy agent/peer2; approved lab roles to lab agent/diagnostics peer. Patient and other unlisted roles are denied.
+- Non-admin REST, WebSocket, SSE, and replay results apply the same filtering; patient reference hashes are omitted. UI role configuration only mirrors the server policy.
 
-Added an isolated `ehr-backend-v3/dashboard-api` foundation. It includes an Express health service, exact-version JWT verification, a file-based default-deny role matrix, topology configuration, event envelope validation, a proposal-derived event registry, response-shape contracts, and Node built-in tests. It does not connect to Fabric, a database, or other services yet.
+## Event integrity and data status
 
-The separate Phase 0 commits are `4b87367` (dashboard agent configuration) and `d8b03fa` (dashboard discovery report). Phase 1 adds new files only; no existing gateway, portal, chaincode, Fabric config, Compose, Nginx, or startup files were changed.
+Events use schema v1 and a strict registry. The validator rejects raw patient IDs, names, clinical values, and AI narrative. The collector reads committed Fabric block metadata and never depends on `setEvent` calls. It excludes transaction arguments, read/write sets, and payload values.
 
-## Phase 2 update
+`EventStore` is append-only NDJSON with in-memory indexes, dedupe, restart recovery, rotation, and pruning. It is a rebuildable telemetry cache, not the authoritative ledger or a tamper-evident audit store. Keep one API process per data directory.
 
-Added the `EventStore` interface and a pure-JavaScript `NdjsonEventStore` implementation using Node built-ins only. The API opens it on startup, validates event envelopes before appending, rebuilds in-memory indexes on restart, rotates and prunes old logs, and reports store availability in `/health`. No event ingest or query route is wired yet.
+Actual data sources must remain clearly distinct from mock/demo events. Synthetic events are marked `mock: true` and are generated separately. Unavailable agents and producers show not connected. The history agent is a registry entry without a live emitter.
 
-The default runtime location is `orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/dashboard-api/data`, ignored by Git. `DASHBOARD_DATA_DIR` can select another repository-relative `data` folder under `dashboard-api`. Rotation defaults to 10 MiB current files and five retained archives, configurable with `DASHBOARD_STORE_MAX_FILE_BYTES` and `DASHBOARD_STORE_MAX_FILES`. The current log is additional to archived files.
+## Dependencies still owned by other teams
 
-Concurrent writes within the API process are serialized. Dedupe uses `eventId` and `(txId, eventType)` so one transaction can still emit distinct lifecycle events. Startup skips corrupted complete lines and truncates an incomplete final current-log line. Retention removes old events from indexes, so dedupe applies to the retained window. Keep one API process per data directory. This store is a disposable observability cache, not a tamper-evident or authoritative compliance audit log.
+Gateway emitters for failed/denied actions and evaluated reads, lab/pharmacy producers, AI/history/governance, FHIR conversion, Security/VCAP, and other producer integrations are not connected by default. Optional patch drafts in `docs/dashboard/patches/` require the owning team's review. No chaincode patch is deployed by this module.
 
-## How teammates can run it
+A dashboard-owned read-only observer identity is required for real Fabric block collection. CPU/memory/disk/IPFS storage metrics are deferred. Docker socket access is intentionally not part of the dashboard.
 
-From `orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/dashboard-api`:
+## Run and inspect
 
-```text
-npm install --no-audit --no-fund
-npm test
-npm run lint
-npm start
+From the repository root:
+
+```bash
+./start.sh
+docker compose --profile dashboard ps
+docker compose logs --tail=100 h-dashboard-api h-dashboard-portal
 ```
 
-Check `http://localhost:4010/health`. It reports Fabric as `NOT_CONNECTED` and the local store as `CONNECTED`; Fabric collection and ingest routes are still unimplemented. No startup or Compose script invokes the dashboard.
-
-## How to turn it off
-
-Do not run `npm start`; no existing service depends on dashboard-api. It is not registered with root Compose, Nginx, or startup scripts.
-
-## JWT and lab/provider login
-
-The API uses `DASHBOARD_JWT_SECRETS` in configured order; entry 0 is the peer0-api key, and the extorg-api key is an opt-in later entry. If the list is empty/unset, verification falls back to `JWT_SECRET` from the dashboard's own environment. To enable approved lab/provider roles, an operator adds the extorg-api `JWT_SECRET` value to their own local `DASHBOARD_JWT_SECRETS` list. Do not read/copy another service's `.env`, and never put secret values in Git or chat. Teammates who do not add the extorg key continue using peer0 tokens as before; no existing service behavior or secrets change. Lab/provider tokens return a clear unavailable message on deployments without that optional key.
-
-JWT verification pins HS256 and requires `userId`, `role`, `mspId`, `peer`, and `exp`. Unsigned tokens and query-string tokens are not accepted. No token/ticket is logged. The local auth stub is off and not implemented.
-
-## Role and data boundaries
-
-The role matrix lives in `dashboard-api/config/authorization.json`. Unknown roles deny. Admin receives aggregate pages; doctor, nurse, pharmacist, and approved diagnostics roles receive only their configured agent/peer scope. Patient references are HMAC hashes and are removed from non-admin event responses. Raw patient identifiers, names, clinical values, and AI summary text are rejected by the event validator. Events without explicit logical ownership metadata remain unavailable to non-admin roles.
-
-## Known limitations and dependencies
-
-- Fabric block collector and ownership tagging are not implemented; block-derived events lacking `agentId` are admin-only.
-- REST aggregation, stream tickets, WebSocket/SSE, login UI, Fabric collection, and gateway emitter integration do not exist yet. The local EventStore is not exposed through a route.
-- The bounded NDJSON store prunes older data and is not tamper-evident; it must not be treated as the authoritative audit record. Cross-process writers are unsupported.
-- `history-agent`, governance, FHIR, Security/VCAP, and AI producer integrations remain marked not connected/dependency pending.
-- Docker, Nginx, and start/stop/setup integration require a separate minimal diff and approval in Phase 6.
-- The existing Docker image workflow has a static matrix without dashboard-api; it will not build this image unless the workflow matrix is updated after review.
-
-## Contact
-
-Group 1 dashboard track owner: Himanshu. Cross-team integration owners are listed in `docs/dashboard/DEPENDENCIES.md` as that inventory is completed.
-# Dashboard API team notes
-
-## Phase 4: aggregation API
-
-- Authenticated REST aggregation is mounted at `/api/dashboard`; `/internal/events` remains ingest-only and must not be published through Nginx.
-- Aggregations use the EventStore, configured topology, and observed health-poller state. Missing values use `null` plus `NOT_CONNECTED` / `NO_DATA`; CPU, memory, disk, peer height/ledger lag, and IPFS storage use remain unavailable until a real allowed source exists.
-- The role map includes the approved peer pages: doctor `peer1.hospital`, nurse `peer2.hospital`, pharmacist `peer2.hospital`, diagnostics roles `peer0.diagnostic`. It remains in `dashboard-api/config/authorization.json` with default deny.
-- `thresholds.json` drives persisted alert events and configurable evaluation/minimum/resolve timings. `ledger_lag_high` is configured but cannot evaluate until comparable real heights exist.
-- `npm run demo` exercises API routes over HTTP with labelled synthetic data and role-specific test JWTs. Mock events are never inserted into a real deployment unless mock acceptance is explicitly enabled.
-- The existing portal expects a flat legacy agent-detail shape; see `docs/dashboard/api-requirements.md`. The API keeps the canonical `{ success, data }` response pending Phase 5 portal wiring.
-
-## Phase 3: collector, health polling, and realtime
-
-- Fabric collection is optional. It reads only committed block events and records transaction metadata (tx id, channel, chaincode/function, creator MSP, validation code, block number, timestamp). It never stores invocation arguments, read/write sets, or transaction payloads.
-- The collector requires a dashboard-owned read-only client identity and TLS material under `dashboard-api/credentials/`. It does not inspect gateway wallets or other services' environment files. See `DASHBOARD_OBSERVER_IDENTITY.md`; those enrollment steps are a draft for an operator to run.
-- The collector starts at the configured recent backfill window when there is no usable checkpoint, then resumes at checkpoint + 1. Replayed Fabric blocks are deduplicated by the event store.
-- Health polling performs bounded HTTP GET requests only. Peer operations endpoints stay unconfigured until an operator supplies URLs. The pharmacy `/api/network-status` endpoint is also polled by GET; the dashboard discards its response body and does not invoke Docker itself.
-- WS and SSE share the dashboard API process. Authenticated clients obtain a short-lived, single-use ticket, and streams apply the configured role policy to live and replayed events.
-- The ticket must travel in the stream URL because browser WebSocket/EventSource clients cannot set Authorization headers. API request logs omit URL/query values. Before deployment, the Infra owner must ensure reverse-proxy access logs redact the `ticket` query parameter (`TODO(dependency: Infra)`); never log request targets containing stream tickets.
-- The demo generator is separate from live producers. Mock events carry `mock: true`, and ingest rejects them unless `DASHBOARD_ALLOW_MOCK=true`.
-
-## Enabling lab/provider token access
-
-Lab/provider tokens remain disabled unless the dashboard operator adds the `extorg-api` `JWT_SECRET` value to `DASHBOARD_JWT_SECRETS` in the dashboard's own local environment. Never paste that value into chat, commit it, or copy it into a shared `.env.example`; use a local secret manager or untracked dashboard `.env`. Teammates who do not configure it continue using the normal hospital token key; their setup and tokens are unaffected.
-
-## Runtime limitations
-
-- The default collector identity is not provisioned by this module. Fabric status remains `NOT_CONNECTED` until the operator enrolls the dashboard observer and supplies endpoint/certificate paths.
-- The dashboard has no Docker socket, Fabric network management, or restart permissions.
-- Stream event replay is limited to the retained window. A `replay-gap` message signals that the requested cursor is no longer retained.
-- The NDJSON store is single-process local storage. It is not a tamper-evident audit ledger; do not treat it as proof of non-repudiation.
+Use `./stop.sh` to stop services without deleting volumes. For API tests/demo commands and historical verification notes see [`TESTING.md`](TESTING.md). Never use mock mode to represent real service activity.

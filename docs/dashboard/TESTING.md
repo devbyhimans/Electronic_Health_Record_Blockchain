@@ -1,46 +1,32 @@
-# Dashboard API testing
+# Dashboard verification guide
 
-Run from `orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/dashboard-api/` with Node.js 20 or later:
+Run from `orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/dashboard-api/` with Node.js 20 or newer:
 
 ```sh
 npm ci
 npm test
 npm run lint
-npm start
 ```
 
-The test suite uses temporary directories, synthetic events, a synthetic Fabric protobuf block fixture, and fake health responses. It does not connect to the real Fabric network. Phase 4 adds local HTTP role-matrix calls, query validation, metric null semantics, trace stitching, alert hysteresis/recovery, indexed 10k/100k store queries, and a sensitive-data test that follows transaction arguments/read-write set/response payload markers through normalization, the NDJSON store, a REST response, and captured request logs.
-
-For a clean laptop demo:
+Portal build:
 
 ```sh
-npm run demo
+cd ../../ehr-frontend-v2/dashboard-portal
+npm ci
+npm run build
 ```
 
-The command launches an isolated API at port 4011 by default, disables Fabric and health-network polling, uses fresh service/JWT keys and a unique data folder under the ignored `dashboard-api/.demo/` directory. It sends labelled events, verifies WebSocket delivery, then makes real HTTP calls to REST routes for each allowed and denied role. Synthetic data is always marked `mock: true`; it does not represent live source status. The demo does not require Docker or Fabric.
+## Test scope
 
-To send a labelled mock batch to an API that is already running, enable mock acceptance and configure its dashboard service key, then run:
+The API's Node test suite covers JWT algorithm/claim failures, configured versus unconfigured keys, authorization matrix rows, zero-PHI envelope validation, EventStore deduplication/recovery/rotation and query behavior, health polling, committed-block normalization from fixtures, role-filtered REST/trace/alert behavior, stream ticket and WebSocket/SSE behavior, and synthetic mock labeling. Tests use synthetic fixtures and do not establish connection to a real Fabric network.
 
-```sh
-npm run mock:events
-```
+`npm run demo` starts an isolated API instance with a unique ignored data directory, disables live Fabric, sends explicitly labelled synthetic events, and exercises HTTP/stream routes. It is a demo only; it must not be presented as live data. `npm run mock:events` sends a labelled mock batch to a configured running API.
 
-Never enable mock acceptance on a deployment where mock activity could be mistaken for live activity. The mock marker remains present on every generated event.
+## Latest recorded checks
 
-## Verification limits
+- Dashboard portal: production bundle rebuilt successfully on 2026-11-03 with Vite 8.3.4; the current Compose command builds and serves under `/dashboard/`.
+- Hospital receptionist login path: after correcting Vite proxy targets to Docker service names, the API returned HTTP 200 through the hospital portal's proxy. Do not put test passwords or tokens in this file.
+- Earlier local builds for the source-backed pharmacy UIs and other portals passed during the workspace UI update. This is not a clean-clone or full-stack release certification.
+- The pharmacy API/ledger integration remains unavailable under its current legacy Fabric connection profile. Pharmacy UI health must not be reported as ledger connectivity.
 
-- The Fabric collector unit/integration test uses a hand-built protobuf fixture and fake async block stream, not a live Fabric peer.
-- Docker/Fabric real-network checks are `NOT VERIFIED` until an operator supplies observer credentials and an available network.
-- Peer/orderer operations URLs are blank by default, so those targets remain `NOT_CONFIGURED` until an operator supplies read-only health URLs.
-- The Phase 4 query benchmark reports host-dependent 10k and 100k recovered-store timings in test output; these are local academic/demo measurements, not a production capacity claim.
-
-## Phase 5–6 local verification update (2026-11-03)
-
-- Dashboard portal `npm run build` passed in the current worktree with Vite 8.3.4 (1,943 modules; approximately 286.86 kB JS and 13.29 kB CSS). This is not clean-clone verification.
-- Portal `npm run lint` could not complete: oxlint exited with `Bus error (core dumped)` in the agent environment.
-- `node --check` passed for the JWT module after adding rejection of the documented example secrets. Automated tests for this guard remain to be added.
-- `bash -n start-sequential.sh`, Compose YAML parsing, and scoped `git diff --check` passed. `nginx -t`, Docker builds, and container startup were not run by the agent.
-- The user ran root `docker compose up --build -d`; the full stack build failed in pharmacy Vite containers with `EBADPLATFORM` because `@rolldown/binding-linux-x64-gnu` requires glibc while those app images use Alpine/musl. No service remained running according to the user’s subsequent `docker compose ps`. The dashboard portal image is now `node:20-slim`; pharmacy files were not changed.
-- The user’s Docker output showed `ehr_network` exists but contained no containers, and no `peer0.hospital.example.com` container was running. Real Fabric collection and login integration are not verified. The agent’s own Docker command still receives socket permission denied.
-- The dashboard `.env` was copied from its example. A metadata-only check found the JWT setting still uses a template placeholder; the API now treats that known placeholder as unconfigured. Replace it locally with the peer0 signing key before testing login. Never add the value to this file or chat.
-- The Compose dashboard services now use the `dashboard` profile. Verify them separately with `docker compose --profile dashboard build h-dashboard-api` and `docker compose --profile dashboard up -d --no-deps nginx h-dashboard-api h-dashboard-portal` after the local dashboard `.env` exists. Do not use the full `docker compose up --build -d` until pharmacy owners resolve their build issue.
+Re-run the commands above after code changes. For live Fabric verification, a team operator must provide a dashboard-owned observer identity and run checks against the intended local network. Do not paste credentials or patient data into chat.

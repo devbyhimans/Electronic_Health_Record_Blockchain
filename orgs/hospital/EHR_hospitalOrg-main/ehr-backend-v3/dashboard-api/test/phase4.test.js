@@ -261,12 +261,13 @@ test('every aggregation route enforces the configured role matrix over real HTTP
   });
 
   const globalRoutes = [
-    '/overview', '/network', '/peers', '/orderers', '/channels', '/transactions/metrics', '/transactions',
+    '/overview', '/network', '/peers', '/orderers', '/channels', '/transactions/metrics', '/blocks/metrics', '/transactions',
     '/security', '/security/events', '/ipfs', '/alerts', '/logs/events',
   ];
   const contractByRoute = {
     '/overview': 'overview', '/network': 'network', '/transactions': 'transactions',
     '/transactions/metrics': 'transactionMetrics', '/agents': 'agents',
+    '/blocks/metrics': 'blocksMetrics',
     '/executions/doctor-run': 'execution', '/executions/doctor-run/trace': 'executionTrace',
     '/security': 'security', '/security/events': 'securityEvents', '/ipfs': 'ipfs', '/alerts': 'alerts',
     '/logs/events': 'events', '/stream-ticket': 'streamTicket',

@@ -11,7 +11,6 @@ import Agents from './pages/Agents'
 import { AgentDashboard } from './components/AgentDashboard'
 import { hasDashboardAuth, loginDashboard, logoutDashboard, readDashboardUser } from './services/api'
 import { allowedViews } from './config/roleViews'
-import ThemeToggle from './components/ThemeToggle'
 
 function Login({ onLogin }) {
   const [username, setUsername] = useState(''); const [password, setPassword] = useState(''); const [error, setError] = useState(''); const [busy, setBusy] = useState(false)
@@ -27,7 +26,7 @@ function App() {
   const views = allowedViews(user?.role)
   const home = views.includes('overview') ? '/overview' : views.includes('agents') ? '/agents' : '/denied'
   const basename = window.location.pathname.startsWith('/dashboard') ? '/dashboard' : undefined
-  return <BrowserRouter basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><ThemeToggle/><Routes>
+  return <BrowserRouter basename={basename} future={{ v7_startTransition: true, v7_relativeSplatPath: true }}><Routes>
     <Route path="/login" element={user ? <Navigate to={home} replace /> : <Login onLogin={setUser} />} />
     <Route path="/denied" element={user && !views.length ? <AccessDenied onLogout={() => { logoutDashboard(); setUser(null) }} /> : <Navigate to={home} replace />} />
     <Route path="/" element={user ? <Layout user={user} onLogout={() => { logoutDashboard(); setUser(null) }} /> : <Navigate to="/login" replace />}>

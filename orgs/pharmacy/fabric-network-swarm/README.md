@@ -1,92 +1,46 @@
-# 💊 Pharmacy Organization Module
+# Pharmacy applications
 
-![Docker](https://img.shields.io/badge/Docker-Swarm-2496ED?logo=docker&style=for-the-badge) ![Hyperledger Fabric](https://img.shields.io/badge/Hyperledger%20Fabric-v2.5-2F3134?logo=hyperledger&style=for-the-badge) ![Node.js](https://img.shields.io/badge/Node.js-Express-339933?logo=nodedotjs&style=for-the-badge) ![React](https://img.shields.io/badge/React-Vite-61DAFB?logo=react&style=for-the-badge)
+The pharmacy folder contains one Express API and several separately maintained Vite applications. They are not consolidated into the hospital portal and are not evidence of a connected pharmacy Fabric organization.
 
-## 📌 Executive Summary
+## Current local applications
 
-The **Pharmacy Organization Module** operates as an autonomous node on the wider EHR Blockchain Network, utilizing Docker Swarm to achieve high availability. It strictly manages pharmaceutical inventory, secures prescription fulfillment, and restricts billing/dispensation actions via ABAC (Attribute-Based Access Control) to authorized Pharmacist Agentic Peers. 
-
----
-
-## 🧬 Swarm Architecture & Peer Topology
-
-This module acts as `Org1MSP` (provider/pharmacy) in the blockchain network.
+| App/service | Port | Root route | Status in root workspace |
+|---|---:|---|---|
+| Backend API | `3000` | `/api/pharmacy/` through Nginx | Starts as `p-backend`; its ledger/IPFS dependencies may be unavailable. |
+| Manager UI | `3001` | `/pharmacy/manager/` | Starts from its own source. |
+| Employee UI | `3002` | `/pharmacy/employee/` | Starts from its own source. |
+| Inventory UI | `3003` | `/pharmacy/inventory/` | Starts from its own source. |
+| Patient UI | `3004` | `/pharmacy/patient/` | Not started: `app/patient/src` is missing in this checkout. |
+| Billing UI | `3005` | `/pharmacy/billing/` | Starts from its own source. |
+| Main frontend | `5175` | `/pharmacy/` | Starts from its own source. |
 
 ```mermaid
-graph TD
-    subgraph Pharmacy_Docker_Swarm
-        Manager[Swarm Manager Node]
-        Worker1[Swarm Worker 1]
-        Worker2[Swarm Worker 2]
-    end
-
-    subgraph Fabric_Nodes
-        P0[ehrswarm-peer0]
-        P1[ehrswarm-peer1]
-        P2[ehrswarm-peer2]
-    end
-
-    Manager --> |Deploys| P0
-    Worker1 --> |Hosts| P1
-    Worker2 --> |Hosts| P2
-
-    P0 --> |Gossip Protocol| P1
-    P1 --> |Gossip Protocol| P2
-    
-    P0 <--> |Transactions| Orderer[(Hospital Raft Orderer)]
+flowchart LR
+  Browser["Browser"] --> Nginx["Nginx /pharmacy/*"]
+  Nginx --> Manager["Manager UI :3001"]
+  Nginx --> Employee["Employee UI :3002"]
+  Nginx --> Inventory["Inventory UI :3003"]
+  Nginx --> Billing["Billing UI :3005"]
+  Nginx --> Main["Main UI :5175"]
+  Nginx -. "source missing; skipped" .-> Patient["Patient UI :3004"]
+  Manager --> API["Pharmacy API :3000"]
+  Employee --> API
+  Inventory --> API
+  Billing --> API
+  Main --> API
+  API -. "legacy connection profile / crypto required" .-> Fabric["Not connected to root ehrchannel by default"]
 ```
 
----
+The Vite apps proxy `/api/pharmacy` to `p-backend` in Compose. The UI avoids substituting fabricated patient or stock data when APIs fail and disables writes when connectivity is not verified. A successful API health response does not prove a Fabric transaction succeeded.
 
-## 📦 Folder Structure
+## Current integration limitation
 
-```text
-fabric-network-swarm/
-├── app/
-│   ├── backend/          # Express API Gateway connecting to Fabric SDK
-│   ├── manager/          # 📊 Pharmacy Manager Dashboard (React)
-│   ├── employee/         # 👨‍⚕️ Pharmacist Portal (Fulfillment/Dispensing)
-│   ├── inventory/        # 📦 Supply Chain & Inventory Portal
-│   ├── billing/          # 💳 Claims & Billing Portal
-│   └── patient/          # 🧍 Patient Visibility Portal
-├── compose/              # Legacy compose templates (now referencing hospital CAs)
-├── scripts/              # Helper scripts for chaincode lifecycle
-└── deploy.sh             # 🚀 Primary Docker Swarm orchestration script
-```
+The existing pharmacy backend defaults to `mychannel` and its connection profile references a legacy `Org1MSP` setup. The root Fabric topology uses `ehrchannel` with `HospitalMSP`, `DiagnosticsMSP`, and `ProviderMSP`. The current chaincode source does not expose the pharmacy inventory function set expected by this backend. Do not claim ledger-backed pharmacy functionality until the Pharmacy and Blockchain teams provide a matching profile, wallet/crypto configuration, deployed contract functions, and verified integration.
 
----
+Root workspace startup:
 
-## ⚙️ Updated Implementation Details
-
-* **Docker Swarm Dynamic Networking**: The multi-node architecture uses environment variables (e.g. dynamic resolution in `hosts.final`) instead of hardcoded IPs, enabling `deploy.sh` to robustly sync `crypto-config` artifacts across Worker Nodes via SCP prior to deploying peer stacks.
-* **Agentic Peer Role (Pharmacy)**: As one of the 4 distinct network roles, the Pharmacist acts as an independent verifier. They cannot alter diagnostics but possess the sole authority to execute the `DispenseMedication` and `ProcessClaim` smart contracts.
-* **Unified CA Delegation**: The module's deployment orchestrator (`deploy.sh`) now securely taps into the Hospital Organization's central CA network (`docker-compose-ca.yaml`) to prevent Error 71 certificate generation conflicts.
-* **Roadmap (FHIR R4 & VCAP)**: The upcoming integration will standardize all pharmacy dispensation payloads to FHIR R4 JSON schemas. Verifiable Clinical AI Provenance (VCAP) will track any AI-driven medication conflict warnings generated at the point of fulfillment.
-
----
-
-## 🚀 Quick Start
-
-If you are running the entire EHR system, just run `bash start-all.sh` from the root directory.
-
-To deploy the Pharmacy Swarm independently (requires 3 physical or virtual machines):
-
-### Step 1: Configure Environment
-Copy the deployment template and configure your Swarm node IPs:
 ```bash
-cp deploy.env.example deploy.env
-# Edit deploy.env to set PC1_IP, PC2_IP, PC3_IP
+./start.sh
 ```
 
-### Step 2: Automated Deployment
-```bash
-# Deploys the CA, Orderer, Peers, installs Chaincode, and boots APIs/UIs
-bash deploy.sh
-```
-
-### Access Portals
-* **Manager UI:** `http://localhost:3001`
-* **Pharmacist:** `http://localhost:3002` (Identity: ph_alice)
-* **Inventory:** `http://localhost:3003` (Identity: inv_bob)
-* **Patient UI:** `http://localhost:3004` (Identity: pat001)
-* **Backend API:** `http://localhost:3000`
+The root startup starts the API and all six separate portal containers. The patient portal is a status-only shell: it does not query patient records because the API does not provide verified patient authentication or patient-scoped sessions. The separate `deploy.sh` and Swarm materials are legacy/standalone workflows and are not invoked by root startup. Do not run them against the shared Fabric network without the owning teams' agreement.

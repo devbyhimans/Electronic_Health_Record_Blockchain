@@ -61,6 +61,23 @@ html[data-theme=light] .min-h-screen.bg-slate-950 button[type=submit]{background
 html[data-theme=light] .min-h-screen.bg-slate-950 .text-white{color:#17313a!important}
 html[data-theme=light] .min-h-screen.bg-slate-950 button[type=submit].text-white{color:#fff!important}
 
+/* Shared CareOps clinic workspace styling */
+html[data-theme=light] body{background:#f3f6fb!important;color:#17243b;font-family:Inter,"Segoe UI",system-ui,sans-serif}
+html[data-theme=light] .min-h-screen.bg-slate-50{background:#f3f6fb!important}
+html[data-theme=light] aside.hidden.md\:flex{background:#fff!important;border-right:1px solid #e4eaf2;color:#53627a}
+html[data-theme=light] aside.hidden.md\:flex .border-white\/10{border-color:#edf1f6!important}
+html[data-theme=light] aside.hidden.md\:flex .text-white{color:#263752!important}
+html[data-theme=light] aside.hidden.md\:flex .text-white\/60{color:#71809a!important}
+html[data-theme=light] aside.hidden.md\:flex .bg-white\/10{background:#f3f6fb!important}
+html[data-theme=light] aside.hidden.md\:flex a.bg-white\/20{background:#eaf1ff!important;color:#1d4ed8!important;box-shadow:inset 3px 0 #3476db}
+html[data-theme=light] aside.hidden.md\:flex a:hover{background:#f1f5fb!important;color:#1d4ed8!important}
+html[data-theme=light] aside.hidden.md\:flex .bg-white\/20.rounded-lg{background:linear-gradient(145deg,#2563eb,#38bdf8)!important}
+html[data-theme=light] main{scrollbar-color:#ccd7e6 transparent}
+html[data-theme=light] main article,html[data-theme=light] main section>div.bg-white,html[data-theme=light] main .rounded-xl.border{border-radius:18px;box-shadow:0 8px 24px #3349690a}
+html[data-theme=light] main button[class*="bg-blue-"]{box-shadow:0 7px 16px #2563eb24}
+html[data-theme=light] main input:focus,html[data-theme=light] main select:focus,html[data-theme=light] main textarea:focus{outline:none;box-shadow:0 0 0 4px #2563eb20;border-color:#6b9df5}
+@media(max-width:767px){html[data-theme=light] .flex.h-screen.bg-slate-50{height:100dvh}html[data-theme=light] main{padding:18px!important}}
+
 
 /* Midnight spectrum: brighter contrast and restrained neon accents. */
 html[data-theme=dark]{
@@ -84,3 +101,6 @@ html[data-theme=dark] .theme-toggle{position:fixed;right:20px;bottom:20px;z-inde
 html[data-theme=dark] .theme-toggle:hover{border-color:#a5ffef;color:#fff;box-shadow:0 0 0 1px rgba(84,241,220,.22),0 0 28px rgba(84,241,220,.28)}
 html[data-theme=light] .theme-toggle{position:fixed;right:20px;bottom:20px;z-index:12000}
 @media(max-width:640px){html[data-theme=dark] .theme-toggle,html[data-theme=light] .theme-toggle{right:14px;bottom:14px}}
+
+/* Theme control stays in the app header/sidebar flow; it never overlays page content. */
+.theme-toggle{position:static!important;inset:auto!important;z-index:auto!important;flex:0 0 auto;box-shadow:0 4px 14px rgba(30,55,90,.12)}

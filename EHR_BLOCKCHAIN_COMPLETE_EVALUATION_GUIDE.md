@@ -1,10 +1,12 @@
-# 🏥 EHR Blockchain Network: Master Technical Evaluation & Defense Guide
+# EHR Blockchain Network: Technical Evaluation Notes (Revalidate Against Current Source)
 
 > **Project Title:** Distributed Electronic Health Record (EHR) System Using Hyperledger Fabric, IPFS, and Role-Based Multi-Org Architecture  
 > **Author & Developer:** Himanshu (`devbyhimans`)  
 > **Target Audience:** Project Evaluation Panel, Technical Auditors, Viva Examiners, and Engineering Colleague  
 
 ---
+
+> **Status note:** This evaluation guide mixes implementation descriptions with design proposals. It is not a deployment record or compliance claim. Confirm every feature against source and runtime. The current local topology, service routes, incomplete integrations, and dashboard limits are maintained in the root [README](README.md) and [architecture](docs/architecture.md). Use synthetic data only.
 
 ## 📑 Table of Contents
 
@@ -248,101 +250,26 @@ The production unified network is partitioned into distinct legal & institutiona
 
 ---
 
-### Unified System Architecture Diagram
+### Current local workspace architecture
+
+This compact diagram is the repository's current root Compose wiring. It does not include standalone distributed network scripts or proposed Digilocker work. See [`docs/architecture.md`](docs/architecture.md) for the full boundaries and integration notes.
 
 ```mermaid
-flowchart TD
-    subgraph Clients["Users and Clinical Staff"]
-        U_Rec["Receptionist / Admin"]
-        U_Doc["Doctor / Specialist"]
-        U_Nur["Nurse / Ward Staff"]
-        U_Lab["Lab Technician"]
-        U_Pat["Patient"]
-    end
-
-    NGINX["Nginx Reverse Proxy Gateway\n(Port 80)"]
-
-    subgraph Frontends["Frontend Portals (React + Vite)"]
-        FE_Hosp["Hospital Portal\n(:5173 /)"]
-        FE_Pat["Patient Portal\n(:5174 /patient/)"]
-        FE_Pharm["Pharmacy Portal\n(:5175 /pharmacy/)"]
-        FE_Lab["Lab Web Client\n(:3006 /lab/)"]
-    end
-
-    subgraph Microservices["Node.js Application Microservices"]
-        API_P0["peer0-api (Reception/Admin :4001)"]
-        API_P1["peer1-api (Doctor Station :4002)"]
-        API_P2["peer2-api (Nurse/Pharm :4003)"]
-        API_Ext["extorg-api (Lab/Claims :4004)"]
-        API_Pat["patient-api (Patient Auth :4005)"]
-        API_IPFS["ipfs-service (:4006)"]
-    end
-
-    IPFS_Node[("IPFS Kubo Node\n(:5001 API / :8090 Gateway)\nRaw Clinical JSON & Scans")]
-
-    subgraph FabricNetwork["Hyperledger Fabric Network ('ehrchannel')"]
-        Orderer["orderer.example.com\n(Port 7050 - Raft Consensus)"]
-        P0["peer0.hospital.example.com\n(Port 7051 - Reception/Admin)"]
-        P1["peer1.hospital.example.com\n(Port 9051 - Doctor Peer)"]
-        P2["peer2.hospital.example.com\n(Port 10051 - Nurse/Pharm Peer)"]
-        PLab["peer0.diagnostic.example.com\n(Port 8051 - Lab Peer)"]
-        PIns["peer0.provider.example.com\n(Port 11051 - Insurance Peer)"]
-        SmartContract["EHR Chaincode v1.0\n(accessControl, visit, ehr, lab, claims)"]
-    end
-
-    %% Client Routing
-    U_Rec --> NGINX
-    U_Doc --> NGINX
-    U_Nur --> NGINX
-    U_Lab --> NGINX
-    U_Pat --> NGINX
-
-    NGINX --> FE_Hosp
-    NGINX --> FE_Pat
-    NGINX --> FE_Pharm
-    NGINX --> FE_Lab
-
-    %% Frontend to API
-    FE_Hosp --> API_P0
-    FE_Hosp --> API_P1
-    FE_Hosp --> API_P2
-    FE_Pat --> API_Pat
-    FE_Lab --> API_Ext
-
-    %% Microservices to IPFS
-    API_P0 --> API_IPFS
-    API_P1 --> API_IPFS
-    API_P2 --> API_IPFS
-    API_Ext --> API_IPFS
-    API_IPFS <-->|Content Pin/Fetch| IPFS_Node
-
-    %% Microservices to Peers (mTLS)
-    API_P0 -->|gRPC mTLS :7051| P0
-    API_P1 -->|gRPC mTLS :9051| P1
-    API_P2 -->|gRPC mTLS :10051| P2
-    API_Ext -->|gRPC mTLS :8051| PLab
-    API_Ext -->|gRPC mTLS :11051| PIns
-    API_Pat -->|gRPC mTLS :7051| P0
-
-    %% Peers to Chaincode
-    P0 --- SmartContract
-    P1 --- SmartContract
-    P2 --- SmartContract
-    PLab --- SmartContract
-    PIns --- SmartContract
-
-    %% Transaction Ordering & Block Delivery
-    P0 -->|Send Endorsed Tx| Orderer
-    P1 -->|Send Endorsed Tx| Orderer
-    P2 -->|Send Endorsed Tx| Orderer
-    PLab -->|Send Endorsed Tx| Orderer
-    PIns -->|Send Endorsed Tx| Orderer
-
-    Orderer -->|Deliver Block #| P0
-    Orderer -->|Deliver Block #| P1
-    Orderer -->|Deliver Block #| P2
-    Orderer -->|Deliver Block #| PLab
-    Orderer -->|Deliver Block #| PIns
+flowchart TB
+  Browser["Browser"] --> Nginx["Nginx :80 / workspace hub"]
+  Nginx --> Staff["Hospital portal :5173"]
+  Nginx --> Patient["Patient portal /patient/ → :5174"]
+  Nginx --> Dashboard["Optional dashboard /dashboard/ → :5176"]
+  Nginx --> Lab["Lab gateway /lab/ → :3006 host"]
+  Nginx --> Pharmacy["Separate pharmacy UIs"]
+  Staff --> HospitalAPIs["Hospital APIs :4001–4006"]
+  Patient --> HospitalAPIs
+  HospitalAPIs --> Fabric[("ehrchannel / 3 MSPs")]
+  HospitalAPIs --> IPFS["IPFS bridge :4006"]
+  Fabric -. "observer identity required" .-> DashAPI["Read-only dashboard API :4010"]
+  Producers["Other event producers"] -. "not connected by default" .-> DashAPI
+  Pharmacy -. "legacy profile; ledger integration unavailable" .-> Fabric
+  Digilocker["Proposed only"] -. "not implemented" .-> Browser
 ```
 
 ---

@@ -7,6 +7,8 @@
 
 ---
 
+> **Historical note:** This migration/recovery log records earlier environment changes and observations. It is not the current topology or startup guide. Use the root [README](README.md) and [setup guide](docs/setup-guide.md) for present behavior.
+
 ## 1. Executive Summary
 
 This project was originally developed across fragmented folders from 5 student team members on Windows and partially migrated to Ubuntu. During inspection, the project could not run due to missing OS packages (Docker, Node.js), invalid file permissions, corrupted Git configuration, hardcoded Windows paths (`/mnt/c/Users/...`), and Windows line endings (CRLF).

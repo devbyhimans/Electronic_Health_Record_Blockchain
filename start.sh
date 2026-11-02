@@ -75,13 +75,12 @@ else
   echo "WARNING: Pharmacy API did not start; continuing with the other services." >&2
 fi
 if docker compose -f "${APP_COMPOSE}" up -d --build \
-  p-manager p-employee p-inventory p-billing p-frontend; then
+  p-manager p-employee p-inventory p-billing p-frontend p-patient; then
   echo "Pharmacy portal containers started."
 else
   echo "WARNING: One or more pharmacy portals did not start. Other services remain running." >&2
-  echo "See: docker compose logs p-manager p-employee p-inventory p-billing p-frontend" >&2
+  echo "See: docker compose logs p-manager p-employee p-inventory p-billing p-frontend p-patient" >&2
 fi
-echo "Pharmacy patient portal skipped: this checkout has no app source under its src directory."
 
 echo "[6/6] Checking service containers…"
 docker compose -f "${APP_COMPOSE}" --profile dashboard ps

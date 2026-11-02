@@ -12,6 +12,7 @@ const SUCCESS_RESPONSES = Object.freeze({
   network: { success: true, data: { channel: 'string', organizations: 'array', peers: 'array', orderers: 'array', channels: 'array', chaincodes: 'array' } },
   transactions: { success: true, data: { items: 'array', page: 'pagination' } },
   transactionMetrics: { success: true, data: { metrics: 'aggregate' } },
+  blocksMetrics: { success: true, data: 'aggregate' },
   agents: { success: true, data: { items: 'array' } },
   agent: { success: true, data: { agent: 'aggregate', metrics: 'aggregate' } },
   agentExecutions: { success: true, data: { items: 'array', page: 'pagination' } },

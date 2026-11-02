@@ -1,5 +1,6 @@
 # Group 1 Dashboard Discovery — Phase 0
 
+> **Historical snapshot:** this is the Phase 0 repository discovery baseline, not the current implementation status. Dashboard API, portal wiring, Compose/Nginx routes, and startup integration were implemented after this report. Use the current [root README](../../README.md), [architecture](../../docs/architecture.md), and [dashboard handoff](../dashboard/PROJECT_HANDOFF.md) for current behavior. The inventory and findings below are preserved as the read-only audit record from Phase 0.
 **Status:** Discovery only. No dashboard implementation or shared deployment configuration was changed in this phase.
 
 **Scope:** Group 1 dashboard API, event pipeline, aggregation, and dashboard portal, with the existing Fabric, hospital API, IPFS, lab, and pharmacy services recorded as dependencies. Existing hospital, patient, pharmacy, lab, chaincode, and Fabric network behavior remains outside this phase.

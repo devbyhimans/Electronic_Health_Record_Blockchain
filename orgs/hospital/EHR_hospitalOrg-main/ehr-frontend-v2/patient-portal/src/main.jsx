@@ -8,7 +8,6 @@ import Overview from './pages/Overview'
 import { VisitsListPage, VisitDetailPage } from './pages/Visits'
 import { EHRPage, AccessPage, SignaturesPage } from './pages/EHRAccess'
 import Profile from './pages/Profile'
-import ThemeToggle from './components/ThemeToggle'
 import './index.css'
 
 function ProtectedRoute({ children }) {
@@ -56,7 +55,6 @@ ReactDOM.createRoot(document.getElementById('root')).render(
     <BrowserRouter>
       <AuthProvider>
         <AppRoutes />
-        <ThemeToggle />
       </AuthProvider>
     </BrowserRouter>
   </React.StrictMode>

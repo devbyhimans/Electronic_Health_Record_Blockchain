@@ -695,6 +695,12 @@ html[data-theme=dark] tbody tr{background:#14242a;border-color:#2b4048}
 html[data-theme=dark] .pill{background:#1b3439;color:#a8d5ce;border-color:#2b5554}
 html[data-theme=dark] .btn-secondary{background:#1b3037;color:#d9e7e9;border-color:#344a52}
 html[data-theme=dark] .btn-ghost{color:#c4d4d8}
+
+/* Align the lab console with the shared CareOps blue clinical palette. */
+html[data-theme=light]{--bg:#f3f6fb;--bg-soft:#f8faff;--surface:#ffffff;--surface-solid:#ffffff;--surface-strong:#f5f8fc;--border:#e2e9f2;--text-main:#17243b;--text-muted:#66758e;--primary:#2563eb;--primary-hover:#1d4ed8;--secondary:#edf3ff;--secondary-hover:#e0ebff;--accent:#d88723;--accent-soft:#fff5e8;--ring:rgba(37,99,235,.22);--success:#16835a;--shadow-sm:0 6px 20px rgba(39,62,94,.07);--shadow-md:0 16px 38px rgba(39,62,94,.12)}
+html[data-theme=light] body{background:radial-gradient(circle at 8% 10%,rgba(59,130,246,.08),transparent 42%),radial-gradient(circle at 88% 88%,rgba(56,189,248,.08),transparent 46%),linear-gradient(160deg,#f8faff,#f0f4fa 54%,#f8faff)}
+html[data-theme=light] .panel{border-radius:20px;box-shadow:0 10px 28px rgba(39,62,94,.07)}
+html[data-theme=light] .btn-primary{box-shadow:0 7px 16px rgba(37,99,235,.2)}
 html[data-theme=dark] #toast{background:#183632;color:#c6e5df;border-color:#2a5852}
 .pill-offline{background:#fff3e7!important;border-color:#e9c69f!important;color:#875423!important}
 html[data-theme=dark] .pill-offline{background:#39291f!important;border-color:#6c4b2d!important;color:#f0c28e!important}
@@ -709,6 +715,11 @@ html[data-theme=dark] .hero .eyebrow{color:#7df5e1}html[data-theme=dark] .hero h
 html[data-theme=dark] .panel{background:linear-gradient(145deg,rgba(20,32,59,.96),rgba(15,24,45,.98));border-color:#29395c;box-shadow:0 14px 34px rgba(0,0,0,.24),inset 0 1px rgba(127,171,255,.06)}
 html[data-theme=dark] .hero-controls label{color:#c7d7f5}html[data-theme=dark] input,html[data-theme=dark] select,html[data-theme=dark] textarea{background:#0b1428;color:#f0f5ff;border-color:#33476f}html[data-theme=dark] input:focus,html[data-theme=dark] select:focus,html[data-theme=dark] textarea:focus{border-color:#54f1dc;box-shadow:0 0 0 3px rgba(84,241,220,.14)}
 html[data-theme=dark] .btn-primary{background:linear-gradient(110deg,#146c9b,#176ea1 48%,#5b4bd8);box-shadow:0 0 22px rgba(50,156,229,.2)}
-html[data-theme=dark] #themeToggle{position:fixed;right:20px;bottom:20px;z-index:12000;border:1px solid rgba(84,241,220,.52);border-radius:999px;background:linear-gradient(135deg,#152847,#171b39);color:#b5fff1;box-shadow:0 0 0 1px rgba(84,241,220,.08),0 8px 28px rgba(0,0,0,.42),0 0 22px rgba(61,190,231,.15);backdrop-filter:blur(14px)}
-html[data-theme=light] #themeToggle{position:fixed;right:20px;bottom:20px;z-index:12000}
-@media(max-width:640px){html[data-theme=dark] #themeToggle,html[data-theme=light] #themeToggle{right:14px;bottom:14px}}
+html[data-theme=dark] #themeToggle{border:1px solid rgba(84,241,220,.52);border-radius:999px;background:linear-gradient(135deg,#152847,#171b39);color:#b5fff1;box-shadow:0 0 0 1px rgba(84,241,220,.08),0 8px 28px rgba(0,0,0,.42),0 0 22px rgba(61,190,231,.15);backdrop-filter:blur(14px)}
+/* Keep gateway, refresh, and theme controls in separate reserved grid cells. */
+.hero-controls{display:grid;grid-template-columns:minmax(0,1fr) auto auto;grid-template-rows:auto auto;align-items:end;gap:.75rem}
+.hero-controls label{grid-column:1/-1;grid-row:1}
+.hero-controls select{grid-column:1;grid-row:2;width:100%;min-width:0}
+.hero-controls #refreshBtn{grid-column:2;grid-row:2;white-space:nowrap}
+.hero-controls #themeToggle{position:static!important;inset:auto!important;z-index:auto!important;grid-column:3;grid-row:2;white-space:nowrap}
+@media(max-width:760px){.hero-controls{grid-template-columns:1fr;grid-template-rows:auto}.hero-controls label,.hero-controls select,.hero-controls #refreshBtn,.hero-controls #themeToggle{grid-column:1;grid-row:auto}.hero-controls #refreshBtn,.hero-controls #themeToggle{width:100%}}

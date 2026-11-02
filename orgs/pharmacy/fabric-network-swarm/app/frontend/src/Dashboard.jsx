@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { Search, Plus, User, Activity, Calendar, ExternalLink, ShieldCheck } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { API_BASE_URL, IPFS_GATEWAY_URL } from './config';
 
 const Dashboard = ({ onAddRecord, currentUser }) => {
@@ -9,11 +9,7 @@ const Dashboard = ({ onAddRecord, currentUser }) => {
   const [loading, setLoading] = useState(true);
   const [recordsUnavailable, setRecordsUnavailable] = useState(false);
 
-  useEffect(() => {
-    fetchRecords();
-  }, [currentUser]);
-
-  const fetchRecords = async () => {
+  const fetchRecords = useCallback(async () => {
     setLoading(true);
     try {
       const resp = await fetch(`${API_BASE_URL}/api/inventory`).catch(() => null);
@@ -31,7 +27,12 @@ const Dashboard = ({ onAddRecord, currentUser }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    const timer = window.setTimeout(() => { void fetchRecords(); }, 0);
+    return () => window.clearTimeout(timer);
+  }, [fetchRecords, currentUser]);
 
   const filteredRecords = records.filter(r => 
     (r.name && r.name.toLowerCase().includes(searchTerm.toLowerCase())) || 
@@ -39,7 +40,7 @@ const Dashboard = ({ onAddRecord, currentUser }) => {
   );
 
   return (
-    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+    <div>
       <div className="dashboard-header">
         <div>
           <h1 style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
@@ -124,7 +125,7 @@ const Dashboard = ({ onAddRecord, currentUser }) => {
           )}
         </div>
       )}
-    </motion.div>
+    </div>
   );
 };
 

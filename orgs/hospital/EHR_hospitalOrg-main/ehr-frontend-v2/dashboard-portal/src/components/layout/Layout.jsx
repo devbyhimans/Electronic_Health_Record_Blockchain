@@ -1,8 +1,9 @@
 import React from 'react'
 import { Outlet, NavLink } from 'react-router-dom'
-import { LayoutDashboard, Network, Bot, ArrowRightLeft, Shield, Database, ScrollText, LogOut } from 'lucide-react'
+import { LayoutDashboard, Network, Bot, ArrowRightLeft, Shield, Database, ScrollText, LogOut, Activity } from 'lucide-react'
 import { useDashboardSocket } from '../../hooks/useDashboardSocket'
 import { allowedViews } from '../../config/roleViews'
+import ThemeToggle from '../ThemeToggle'
 
 const navItems = [
   { path: '/overview', key: 'overview', label: 'Overview', icon: LayoutDashboard }, { path: '/network', key: 'network', label: 'Network', icon: Network },
@@ -11,20 +12,26 @@ const navItems = [
 ]
 
 export function Layout({ user, onLogout }) {
-  const { isConnected, lastBlock, events } = useDashboardSocket();
-  return <div className="min-h-screen bg-slate-50 md:flex">
-    <aside className="md:w-64 bg-slate-900 text-slate-300 flex flex-col shrink-0">
-      <div className="h-16 flex items-center px-6 font-bold text-xl text-white border-b border-slate-800">EHR Dashboard</div>
-      <nav className="flex-1 overflow-x-auto md:overflow-y-auto py-3"><ul className="flex md:block gap-1 px-3">
-        {navItems.filter(item => allowedViews(user?.role).includes(item.key)).map(item => <li key={item.path} className="shrink-0"><NavLink to={item.path} className={({ isActive }) => `flex items-center gap-3 px-3 py-2 rounded-lg ${isActive ? 'bg-blue-600 text-white' : 'hover:bg-slate-800 hover:text-white'}`}><item.icon size={18}/><span className="text-sm">{item.label}</span></NavLink></li>)}
-      </ul></nav>
-    </aside>
-    <div className="flex-1 min-w-0 flex flex-col min-h-screen">
-      <header className="min-h-16 bg-white border-b border-slate-200 flex flex-wrap items-center justify-between gap-3 px-4 md:px-6 py-3">
-        <div><h2 className="font-medium text-slate-800">EHR Platform Observability</h2><p className="text-xs text-slate-500">{user?.username || user?.userId} · {user?.role}</p></div>
-        <div className="flex items-center gap-4 text-sm"><span className="text-slate-600">Last block: {lastBlock ?? 'No data'}</span><span className="text-slate-600" aria-live="polite">Recent stream events: {events.length}</span><span className={isConnected ? 'text-emerald-700' : 'text-slate-500'}>{isConnected ? 'Connected' : 'Not connected'}</span><button onClick={onLogout} className="flex items-center gap-2 text-slate-600 hover:text-slate-900" aria-label="Log out"><LogOut size={16}/>Log out</button></div>
-      </header>
-      <main className="flex-1 overflow-y-auto p-4 md:p-6"><Outlet/></main>
-    </div>
+  const { isConnected, lastBlock, events } = useDashboardSocket()
+  return <div className="dashboard-shell min-h-screen bg-slate-50">
+    <header className="dashboard-topbar sticky top-0 z-30 border-b border-slate-200/80 bg-white/90 px-4 py-3 backdrop-blur-xl md:px-8">
+      <div className="dashboard-topbar-inner mx-auto flex max-w-[1600px] flex-wrap items-center gap-4">
+        <div className="flex min-w-[205px] items-center gap-3">
+          <span className="dashboard-brand-mark"><Activity size={19}/></span>
+          <div><div className="font-bold tracking-tight text-slate-900">Care<span className="text-blue-600">Ops</span></div><div className="text-[10px] font-semibold uppercase tracking-[.18em] text-slate-400">EHR observability</div></div>
+        </div>
+        <nav className="dashboard-nav flex flex-1 items-center gap-1 overflow-x-auto" aria-label="Dashboard navigation">
+          {navItems.filter(item => allowedViews(user?.role).includes(item.key)).map(item => <NavLink key={item.path} to={item.path} className={({ isActive }) => `dashboard-nav-link ${isActive ? 'is-active' : ''}`}><item.icon size={16}/><span>{item.label}</span></NavLink>)}
+        </nav>
+        <div className="dashboard-user flex items-center gap-3">
+          <div className="hidden text-right sm:block"><div className="max-w-36 truncate text-xs font-semibold text-slate-800">{user?.username || user?.userId}</div><div className="text-[10px] capitalize text-slate-500">{user?.role}</div></div>
+          <span className={`dashboard-live-dot ${isConnected ? 'is-live' : ''}`} title={isConnected ? 'Live stream connected' : 'Stream not connected'} />
+          <ThemeToggle />
+          <button onClick={onLogout} className="dashboard-logout" aria-label="Log out"><LogOut size={16}/><span className="hidden sm:inline">Log out</span></button>
+        </div>
+      </div>
+      <div className="dashboard-statusline mx-auto mt-2 flex max-w-[1600px] flex-wrap gap-x-5 gap-y-1 text-[11px] text-slate-500"><span>{isConnected ? 'Live event stream' : 'Stream not connected'}</span><span>Latest block <b className="font-semibold text-slate-700">{lastBlock ?? 'Unavailable'}</b></span><span>{events.length} recent stream events</span></div>
+    </header>
+    <main className="mx-auto w-full max-w-[1600px] p-4 md:p-8"><Outlet/></main>
   </div>
 }

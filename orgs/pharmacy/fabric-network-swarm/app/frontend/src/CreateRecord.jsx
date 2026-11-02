@@ -1,7 +1,18 @@
 import React, { useState } from 'react';
 import { Save, X, Clipboard, UserCircle, Droplets, Calendar, FileText, Pill } from 'lucide-react';
-import { motion } from 'framer-motion';
 import { API_BASE_URL } from './config';
+
+function ageFromDateOfBirth(dateOfBirth) {
+  const [year, month, day] = dateOfBirth.split('-').map(Number);
+  const birthDate = new Date(year, month - 1, day);
+  const invalidDate = !year || !month || !day || birthDate.getFullYear() !== year || birthDate.getMonth() !== month - 1 || birthDate.getDate() !== day;
+  const today = new Date();
+  let age = today.getFullYear() - year;
+  const birthdayNotReached = today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day);
+  if (birthdayNotReached) age -= 1;
+  if (invalidDate || age < 0) throw new Error('Enter a valid date of birth that is not in the future.');
+  return age;
+}
 
 const CreateRecord = ({ onCancel, onSave, currentUser }) => {
   const [formData, setFormData] = useState({
@@ -13,37 +24,39 @@ const CreateRecord = ({ onCancel, onSave, currentUser }) => {
     prescription: ''
   });
   const [submitting, setSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState('');
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSubmitting(true);
+    setSubmitError('');
     try {
-      const resp = await fetch(`${API_BASE_URL}/api/create-patient`, {
+      const age = ageFromDateOfBirth(formData.dob);
+      const response = await fetch(`${API_BASE_URL}/api/create-patient`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           patientId: formData.patientId || `PAT-${Date.now().toString().slice(-4)}`,
           name: formData.name,
-          age: 30,
+          age,
           ...formData, 
           user: currentUser 
         })
-      }).catch(() => null);
+      });
+      if (!response.ok) {
+        const details = await response.json().catch(() => null);
+        throw new Error(details?.error || details?.message || `Request failed (${response.status})`);
+      }
       onSave();
     } catch (err) {
-      onSave();
+      setSubmitError(err instanceof Error ? err.message : 'Unable to save the record. Please try again.');
     } finally {
       setSubmitting(false);
     }
   };
 
   return (
-    <motion.div 
-      initial={{ y: 20, opacity: 0 }} 
-      animate={{ y: 0, opacity: 1 }}
-      className="glass-card"
-      style={{ maxWidth: '600px', margin: '0 auto' }}
-    >
+    <div className="glass-card" style={{ maxWidth: '600px', margin: '0 auto' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '2rem' }}>
         <div>
           <h2>Issue New Medical Record</h2>
@@ -53,6 +66,7 @@ const CreateRecord = ({ onCancel, onSave, currentUser }) => {
       </div>
 
       <form onSubmit={handleSubmit}>
+        {submitError && <p role="alert" className="connection-note">{submitError}</p>}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1rem' }}>
           <div>
             <label style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', marginBottom: '0.5rem', fontSize: '0.8rem', color: '#94a3b8' }}>
@@ -104,7 +118,7 @@ const CreateRecord = ({ onCancel, onSave, currentUser }) => {
           </button>
         </div>
       </form>
-    </motion.div>
+    </div>
   );
 };
 

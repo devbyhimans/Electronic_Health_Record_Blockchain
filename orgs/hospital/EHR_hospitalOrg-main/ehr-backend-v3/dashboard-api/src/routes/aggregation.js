@@ -4,6 +4,7 @@ const express = require('express');
 const { createAuthenticate } = require('../middleware/authenticate');
 const { canAccessAgent, canAccessPage, canAccessPeer, filterEventsForUser, isAdmin } = require('../authorization');
 const { EVENT_REGISTRY } = require('../contracts/eventRegistry');
+const { buildBlockMetrics } = require('../aggregation/blockMetrics');
 const { groupExecutions, stitchTrace } = require('../aggregation/traces');
 const {
   badRequest, dataStatus, paginatedEvents, parseCursor, parseEnum, parsePageSize,
@@ -20,6 +21,7 @@ const TRANSACTION_TYPES = ['TRANSACTION_SUBMITTED', 'TRANSACTION_COMMITTED', 'TR
 const ALLOWED_SEVERITIES = ['INFO', 'WARNING', 'ERROR', 'CRITICAL'];
 const ALLOWED_SORTS = ['asc', 'desc'];
 const WINDOW_NAMES = ['1m', '5m', '1h', '24h'];
+const BLOCK_WINDOW_NAMES = ['24h', '7d', '30d'];
 
 function forbidden(res) { return res.status(403).json({ success: false, error: 'Role is not permitted to access this dashboard resource.' }); }
 function requirePage(page, authorization) {
@@ -153,6 +155,12 @@ function createAggregationRouter(config) {
   router.get('/transactions/metrics', page('transactions'), (req, res) => {
     const window = parseEnum(req.query, 'window', WINDOW_NAMES) || '5m';
     res.json(success(config.metrics.transactionMetrics(window)));
+  });
+  router.get('/blocks/metrics', page('overview'), (req, res) => {
+    const window = parseEnum(req.query, 'window', BLOCK_WINDOW_NAMES) || '24h';
+    const events = config.store.query({ eventTypes: [...new Set(['TRANSACTION_COMMITTED', 'TRANSACTION_FAILED', 'MVCC_CONFLICT', 'ENDORSEMENT_FAILED'])], limit: 1000000 });
+    const collectorStatus = config.collector?.getStatus?.() || null;
+    res.json(success(buildBlockMetrics(events, { window, collectorStatus })));
   });
   router.get('/transactions', page('transactions'), (req, res) => {
     const { limit, cursor, filters } = queryBase(req, { eventTypes: TRANSACTION_TYPES });

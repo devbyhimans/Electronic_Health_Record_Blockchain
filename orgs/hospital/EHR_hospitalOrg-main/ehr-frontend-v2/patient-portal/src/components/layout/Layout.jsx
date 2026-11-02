@@ -2,6 +2,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '../../context/AuthContext'
 import { Heart, FileText, Calendar, ShieldCheck, User, LogOut, Fingerprint } from 'lucide-react'
 import { useState } from 'react'
+import ThemeToggle from '../ThemeToggle'
 
 const NAV = [
   { to: '/overview',    icon: Heart,        label: 'Health' },
@@ -40,6 +41,7 @@ export default function Layout({ children }) {
             </div>
           </div>
           <div className="flex items-center gap-3">
+            <ThemeToggle />
             <div className="text-right">
               <p className="text-xs font-semibold text-slate-700">{patient.patientId}</p>
               <p className="text-xs text-slate-400">{patient.email || 'No email'}</p>
