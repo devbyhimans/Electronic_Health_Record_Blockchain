@@ -26,11 +26,12 @@ function createApp(config) {
     success: true,
     service: 'dashboard-api',
     status: 'UP',
-    dependencies: { fabric: 'NOT_CONNECTED', store: 'NOT_CONNECTED' },
+    dependencies: { fabric: 'NOT_CONNECTED', store: config.store ? 'CONNECTED' : 'NOT_CONNECTED' },
   }));
 
   app.locals.dashboardAuthenticate = createAuthenticate(config.authorization);
   app.locals.dashboardConfig = config;
+  app.locals.dashboardStore = config.store || null;
   app.use(notFound);
   app.use(errorHandler);
   return app;

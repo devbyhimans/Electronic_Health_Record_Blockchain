@@ -27,6 +27,22 @@ test('health response reports dependencies as not connected without fabricated m
   }
 });
 
+test('health reports the injected EventStore as connected', async () => {
+  const app = createApp({ authorization, store: {} });
+  const server = app.listen(0, '127.0.0.1');
+  try {
+    await new Promise((resolve, reject) => {
+      server.once('listening', resolve);
+      server.once('error', reject);
+    });
+    const response = await fetch(`http://127.0.0.1:${server.address().port}/health`);
+    assert.equal(response.status, 200);
+    assert.equal((await response.json()).dependencies.store, 'CONNECTED');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+});
+
 test('unknown routes retain the existing API error shape', async () => {
   const app = createApp({ authorization });
   const server = app.listen(0, '127.0.0.1');

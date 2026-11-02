@@ -6,6 +6,14 @@ Added an isolated `ehr-backend-v3/dashboard-api` foundation. It includes an Expr
 
 The separate Phase 0 commits are `4b87367` (dashboard agent configuration) and `d8b03fa` (dashboard discovery report). Phase 1 adds new files only; no existing gateway, portal, chaincode, Fabric config, Compose, Nginx, or startup files were changed.
 
+## Phase 2 update
+
+Added the `EventStore` interface and a pure-JavaScript `NdjsonEventStore` implementation using Node built-ins only. The API opens it on startup, validates event envelopes before appending, rebuilds in-memory indexes on restart, rotates and prunes old logs, and reports store availability in `/health`. No event ingest or query route is wired yet.
+
+The default runtime location is `orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/dashboard-api/data`, ignored by Git. `DASHBOARD_DATA_DIR` can select another repository-relative `data` folder under `dashboard-api`. Rotation defaults to 10 MiB current files and five retained archives, configurable with `DASHBOARD_STORE_MAX_FILE_BYTES` and `DASHBOARD_STORE_MAX_FILES`. The current log is additional to archived files.
+
+Concurrent writes within the API process are serialized. Dedupe uses `eventId` and `(txId, eventType)` so one transaction can still emit distinct lifecycle events. Startup skips corrupted complete lines and truncates an incomplete final current-log line. Retention removes old events from indexes, so dedupe applies to the retained window. Keep one API process per data directory. This store is a disposable observability cache, not a tamper-evident or authoritative compliance audit log.
+
 ## How teammates can run it
 
 From `orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/dashboard-api`:
@@ -17,7 +25,7 @@ npm run lint
 npm start
 ```
 
-Check `http://localhost:4010/health`. It intentionally reports Fabric and store as `NOT_CONNECTED` until later phases implement those integrations. No startup or Compose script invokes the dashboard in Phase 1.
+Check `http://localhost:4010/health`. It reports Fabric as `NOT_CONNECTED` and the local store as `CONNECTED`; Fabric collection and ingest routes are still unimplemented. No startup or Compose script invokes the dashboard.
 
 ## How to turn it off
 
@@ -36,7 +44,8 @@ The role matrix lives in `dashboard-api/config/authorization.json`. Unknown role
 ## Known limitations and dependencies
 
 - Fabric block collector and ownership tagging are not implemented; block-derived events lacking `agentId` are admin-only.
-- No database, REST aggregation, stream ticket, WebSocket/SSE, login UI, or gateway emitter integration exists yet.
+- REST aggregation, stream tickets, WebSocket/SSE, login UI, Fabric collection, and gateway emitter integration do not exist yet. The local EventStore is not exposed through a route.
+- The bounded NDJSON store prunes older data and is not tamper-evident; it must not be treated as the authoritative audit record. Cross-process writers are unsupported.
 - `history-agent`, governance, FHIR, Security/VCAP, and AI producer integrations remain marked not connected/dependency pending.
 - Docker, Nginx, and start/stop/setup integration require a separate minimal diff and approval in Phase 6.
 - The existing Docker image workflow has a static matrix without dashboard-api; it will not build this image unless the workflow matrix is updated after review.

@@ -44,6 +44,23 @@ function resolveRepositoryFile(root, environmentName, fallback) {
   return resolved;
 }
 
+function resolveDataDirectory(root, environment = process.env) {
+  const configured = environment.DASHBOARD_DATA_DIR ||
+    'orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/dashboard-api/data';
+  if (path.isAbsolute(configured)) throw new Error('DASHBOARD_DATA_DIR must be repository-relative');
+  const resolved = path.resolve(root, configured);
+  const relative = path.relative(root, resolved);
+  if (!relative || relative.startsWith('..') || path.isAbsolute(relative)) {
+    throw new Error('DASHBOARD_DATA_DIR must stay within the repository');
+  }
+  const apiDirectory = path.resolve(__dirname, '..');
+  const apiRelative = path.relative(apiDirectory, resolved);
+  if (apiRelative.startsWith('..') || path.isAbsolute(apiRelative) || path.basename(resolved) !== 'data') {
+    throw new Error('DASHBOARD_DATA_DIR must be a directory named data under dashboard-api');
+  }
+  return resolved;
+}
+
 function readJson(filePath, label) {
   try {
     return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -91,11 +108,22 @@ function loadConfig() {
   }
   const port = Number(process.env.PORT || 4010);
   if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('PORT must be an integer from 1 to 65535');
+  const storeMaxFileBytes = Number(process.env.DASHBOARD_STORE_MAX_FILE_BYTES || 10485760);
+  if (!Number.isSafeInteger(storeMaxFileBytes) || storeMaxFileBytes < 1024) {
+    throw new Error('DASHBOARD_STORE_MAX_FILE_BYTES must be an integer of at least 1024');
+  }
+  const storeMaxFiles = Number(process.env.DASHBOARD_STORE_MAX_FILES || 5);
+  if (!Number.isSafeInteger(storeMaxFiles) || storeMaxFiles < 1 || storeMaxFiles > 1000) {
+    throw new Error('DASHBOARD_STORE_MAX_FILES must be an integer from 1 to 1000');
+  }
 
   return Object.freeze({
     repoRoot,
     port,
     host: process.env.DASHBOARD_HOST || '0.0.0.0',
+    dataDir: resolveDataDirectory(repoRoot),
+    storeMaxFileBytes,
+    storeMaxFiles,
     topology,
     authorization,
     topologyPath: path.relative(repoRoot, topologyPath),
@@ -108,5 +136,6 @@ module.exports = {
   loadConfig,
   loadDashboardEnv,
   resolveRepositoryFile,
+  resolveDataDirectory,
   resolveTopologyEndpoints,
 };

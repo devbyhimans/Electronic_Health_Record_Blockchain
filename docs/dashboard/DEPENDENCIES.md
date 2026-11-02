@@ -12,7 +12,7 @@
 | AI and history agents | Agentic AI team | Not connected; history agent is present as a logical config entry only. | Agent lifecycle, fallback, stage, governance, and human-review events. |
 | Security/VCAP | Security team | Not connected. | Consent/access, emergency-access, VCAP and audit events without PHI. |
 | IPFS health | IPFS service owner | Existing `/health` is public; runtime not verified. | Status and aggregate counts only; no payload retrieval. |
-| Persistent event store | Group 1 / Phase 2 | Not implemented. | Disposable, rebuildable cache; library requires separate approval. |
+| Persistent event store | Group 1 | Implemented in Phase 2 as `EventStore` / `NdjsonEventStore`, Node built-ins only. | Single-process append-only NDJSON cache with in-memory indexes, retention, and restart recovery; no ingest/query route yet. |
 | Dashboard deployment | Group 1 / Phase 6 | Shared files unchanged. | Optional Compose profile, Nginx routes and startup wiring as reviewed diffs. |
 
 Every unavailable producer must remain marked `TODO(dependency: <team>)` and display as not connected. Mock fixtures are separate from live events and must be visibly labelled.

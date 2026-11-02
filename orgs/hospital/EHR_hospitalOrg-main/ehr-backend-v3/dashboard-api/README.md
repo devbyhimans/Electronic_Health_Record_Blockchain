@@ -1,6 +1,6 @@
 # Dashboard API
 
-Optional, read-only API foundation for Group 1 observability. It is isolated in this folder and is not wired into the root Compose stack, Nginx, or startup scripts in Phase 1. Running or failing this service does not alter existing services.
+Optional, read-only API foundation for Group 1 observability. It is isolated in this folder and is not wired into the root Compose stack, Nginx, or startup scripts. Running or failing this service does not alter existing services.
 
 ## Run locally
 
@@ -13,7 +13,7 @@ npm run lint
 npm start
 ```
 
-The default health URL is `http://localhost:4010/health`. It reports Fabric and store as `NOT_CONNECTED`; those integrations are not implemented in Phase 1. The service can start without JWT configuration so its health endpoint remains available, but protected operations fail closed with 503 until a key is configured.
+The default health URL is `http://localhost:4010/health`. Fabric remains `NOT_CONNECTED`; the local EventStore starts with the API and is reported as `CONNECTED`. Event ingest and query routes are not implemented yet. The service can start without JWT configuration so its health endpoint remains available, but protected operations fail closed with 503 until a key is configured.
 
 Copy `.env.example` to `.env` for local settings. The loader reads only this dashboard-api `.env` file, then uses process environment values in preference to file values. It does not read any other service's `.env`. Configuration file paths must be relative to the repository root.
 
@@ -45,6 +45,19 @@ The same authorization helpers are intended for REST, WebSocket, SSE, and replay
 
 The peer0-api and extorg-api source code signs the same `userId`, `role`, `mspId`, and `peer` claims using `JWT_SECRET`. Runtime values are not read. Extorg tokens are accepted only when the operator supplies the extorg key as a later entry in `DASHBOARD_JWT_SECRETS`.
 
+## Phase 2 EventStore
+
+The `EventStore` interface is implemented by `NdjsonEventStore` using Node's built-in filesystem modules only. It validates event envelopes before persistence, serializes concurrent writes in one API process, appends one JSON event per line, and synchronizes each appended record before reporting success. In-memory indexes support lookup by event ID, transaction ID, event type, organization, and agent.
+
+- `DASHBOARD_DATA_DIR` is repository-relative and defaults to `orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/dashboard-api/data`. The configured directory must be named `data` under `dashboard-api`; it is Git-ignored. The store never reads or writes ledger, IPFS, or other service data.
+- `DASHBOARD_STORE_MAX_FILE_BYTES` defaults to 10 MiB. When a current log would exceed the limit, it is renamed to a numbered archive. `DASHBOARD_STORE_MAX_FILES` defaults to 5 archived files; older archives are pruned when rotation occurs. The current log is retained in addition to those archives.
+- Duplicates are suppressed by `eventId` and by `(txId, eventType)`, preserving separate transaction lifecycle event types for one Fabric transaction. Dedupe history is limited to events still retained after pruning.
+- Startup rebuilds indexes from archived logs followed by the current log. Invalid complete lines are skipped; an incomplete final line in the current log is truncated before future appends. Counts are visible only through internal `getStats()` and no payloads are logged.
+- The store is a disposable, rebuildable observability cache, not the authoritative medical or compliance audit record. Filesystem edits are not tamper-evident. Run only one dashboard-api process against a data directory; multi-process writers and shared network filesystems are not supported.
+- Tests measure a 1,000-event batch and indexed query. Timings depend on the host and filesystem; the test reports its observed values.
+
+Configuration rejects absolute or repository-escaping data paths. The sample path and values are placeholders, not machine-specific settings.
+
 ## Phase 1 contracts
 
 - `src/contracts/envelope.js` validates schema version 1. Required fields: `schemaVersion`, `eventId`, `eventType`, `timestamp`, `source`, `org`, `severity`, and `payload`. Optional fields: `peerId`, `txId`, `blockNumber`, and `correlationId`.
@@ -59,4 +72,4 @@ The Dockerfile uses Node 20 Alpine and installs only exact, approved JavaScript 
 
 ## Implemented in Phase 1
 
-This phase adds configuration loading, structured non-PHI logging, health, JWT verification, role filtering helpers, event contracts, and tests. The collector, event ingest, stream tickets, store, REST aggregation, portal wiring, login UI, deployment integration, and gateway emitter patches are not implemented yet.
+Phases 1 and 2 add configuration loading, structured non-PHI logging, health, JWT verification, role filtering helpers, event contracts, and the local EventStore with tests. The collector, event ingest, stream tickets, REST aggregation, portal wiring, login UI, deployment integration, and gateway emitter patches are not implemented yet.
