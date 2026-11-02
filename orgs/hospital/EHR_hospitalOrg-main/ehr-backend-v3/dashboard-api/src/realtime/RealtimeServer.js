@@ -24,7 +24,12 @@ function makeDashboardRouter(options) {
   router.post('/stream-ticket', authenticate, (req, res) => {
     try {
       const issued = options.tickets.issue(req.dashboardUser);
-      return res.status(201).json({ success: true, ticket: issued.ticket, expiresInMs: issued.expiresInMs });
+      return res.status(201).json({
+        success: true,
+        data: { ticket: issued.ticket, expiresInSeconds: Math.floor(issued.expiresInMs / 1000) },
+        ticket: issued.ticket,
+        expiresInMs: issued.expiresInMs,
+      });
     } catch {
       return res.status(401).json({ success: false, error: 'Authentication token is expired.' });
     }

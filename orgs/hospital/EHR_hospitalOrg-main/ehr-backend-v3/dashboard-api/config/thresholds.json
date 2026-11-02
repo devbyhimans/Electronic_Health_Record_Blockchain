@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "evaluationIntervalMs": 5000,
+  "minimumDurationMs": 10000,
+  "resolveDurationMs": 10000,
+  "metricsWindowMs": 300000,
+  "rules": {
+    "peer_down": { "severity": "CRITICAL", "enabled": true },
+    "orderer_down": { "severity": "CRITICAL", "enabled": true },
+    "ipfs_down": { "severity": "CRITICAL", "enabled": true },
+    "agent_offline": { "severity": "CRITICAL", "enabled": true },
+    "latency_high": { "severity": "WARNING", "enabled": true, "latencyMs": 1500 },
+    "failure_rate_high": { "severity": "WARNING", "enabled": true, "failureRate": 0.1 },
+    "mvcc_rate_high": { "severity": "WARNING", "enabled": true, "mvccRate": 0.05 },
+    "ledger_lag_high": { "severity": "WARNING", "enabled": true, "ledgerLagBlocks": 10 },
+    "vcap_failure": { "severity": "HIGH", "enabled": true },
+    "access_denied_spike": { "severity": "HIGH", "enabled": true, "count": 10 }
+  }
+}

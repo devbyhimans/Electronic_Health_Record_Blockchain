@@ -49,11 +49,11 @@ test('accepts only keyed patient hashes', () => {
   assert.match(validateEventEnvelope(invalid).error, /patientIdHash/);
 });
 
-test('validates the agreed trace stages and statuses', () => {
+test('accepts agreed trace stages and preserves an unknown stage for flagged display', () => {
   const valid = makeEvent('AGENT_STAGE_UPDATED', { agentId: 'history-agent', stage: 'FHIR_CONVERSION', stageStatus: 'WAITING_HUMAN' });
   const invalid = makeEvent('AGENT_STAGE_UPDATED', { agentId: 'history-agent', stage: 'UNKNOWN', stageStatus: 'DONE' });
   assert.deepEqual(validateEventEnvelope(valid), { valid: true });
-  assert.match(validateEventEnvelope(invalid).error, /trace stage/);
+  assert.deepEqual(validateEventEnvelope(invalid), { valid: true });
 });
 
 test('requires the documented envelope fields and rejects unknown event types', () => {

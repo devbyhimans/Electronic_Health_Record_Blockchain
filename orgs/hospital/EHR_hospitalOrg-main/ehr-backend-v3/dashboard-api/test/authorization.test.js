@@ -13,7 +13,7 @@ const {
 const allowedRoles = [
   ['admin', 'overview'],
   ['doctor', 'clinical-agent'],
-  ['nurse', 'nurse-agent'],
+  ['nurse', 'peer2.hospital'],
   ['pharmacist', 'pharmacy-agent'],
   ['labtechnician', 'lab-agent'],
   ['labsupervisor', 'lab-agent'],
@@ -36,7 +36,13 @@ for (const [role, target] of allowedRoles) {
       assert.equal(canAccessPage(user, 'overview', authorization), false);
       assert.equal(canAccessPage(user, 'agent', authorization), true);
       const org = role.startsWith('lab') || role === 'radiologist' ? 'DiagnosticsMSP' : 'HospitalMSP';
-      assert.equal(canAccessAgent(user, target, org, authorization), true);
+      if (role === 'nurse') {
+        const { canAccessPeer } = require('../src/authorization');
+        assert.equal(canAccessPeer(user, target, org, authorization), true);
+        assert.equal(canAccessAgent(user, 'nurse-agent', org, authorization), false);
+      } else {
+        assert.equal(canAccessAgent(user, target, org, authorization), true);
+      }
     }
   });
 }

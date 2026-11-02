@@ -38,7 +38,7 @@
     },
     "nurse": {
       "pages": ["agent"],
-      "agentIds": ["nurse-agent"],
+      "agentIds": [],
       "peerIds": ["peer2.hospital"],
       "orgs": ["HospitalMSP"],
       "showPatientIdHash": false,

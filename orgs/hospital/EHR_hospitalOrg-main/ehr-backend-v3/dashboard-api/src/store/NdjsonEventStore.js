@@ -16,7 +16,7 @@ function safeLimit(value, fallback = 100) {
   if (value === undefined) return fallback;
   const number = Number(value);
   if (!Number.isInteger(number) || number < 1) return fallback;
-  return Math.min(number, 1000);
+  return Math.min(number, 1000000);
 }
 
 function freezeEvent(event) {
@@ -46,6 +46,9 @@ class NdjsonEventStore extends EventStore {
     this.byEventType = new Map();
     this.byOrganization = new Map();
     this.byAgent = new Map();
+    this.byPeer = new Map();
+    this.byCorrelationId = new Map();
+    this.bySource = new Map();
     this.eventToFile = new Map();
     this.fileToEvents = new Map();
     this.fileBytes = 0;
@@ -246,6 +249,9 @@ class NdjsonEventStore extends EventStore {
     this._addToSetIndex(this.byEventType, event.eventType, event.eventId);
     this._addToSetIndex(this.byOrganization, event.org, event.eventId);
     if (event.payload?.agentId) this._addToSetIndex(this.byAgent, event.payload.agentId, event.eventId);
+    if (event.peerId) this._addToSetIndex(this.byPeer, event.peerId, event.eventId);
+    if (event.correlationId) this._addToSetIndex(this.byCorrelationId, event.correlationId, event.eventId);
+    if (event.source) this._addToSetIndex(this.bySource, event.source, event.eventId);
   }
 
   _addToSetIndex(index, key, eventId) {
@@ -262,6 +268,9 @@ class NdjsonEventStore extends EventStore {
       [this.byEventType, event.eventType],
       [this.byOrganization, event.org],
       [this.byAgent, event.payload?.agentId],
+      [this.byPeer, event.peerId],
+      [this.byCorrelationId, event.correlationId],
+      [this.bySource, event.source],
       [this.byTransaction, eventTransactionKey(event)],
       [this.byTxId, event.txId],
     ];
@@ -279,15 +288,35 @@ class NdjsonEventStore extends EventStore {
 
   query(filters = {}) {
     const limit = safeLimit(filters.limit);
-    const keys = [
-      filters.eventType && this.byEventType.get(filters.eventType),
-      filters.org && this.byOrganization.get(filters.org),
-      filters.agentId && this.byAgent.get(filters.agentId),
-      filters.txId && this.byTxId.get(filters.txId),
+    const union = (index, values) => {
+      if (!values?.length) return null;
+      const ids = new Set();
+      for (const value of values) for (const eventId of index.get(value) || []) ids.add(eventId);
+      return ids;
+    };
+    const eventTypes = filters.eventTypes || (filters.eventType ? [filters.eventType] : null);
+    const orgs = filters.orgs || (filters.org ? [filters.org] : null);
+    const agentIds = filters.agentIds || (filters.agentId ? [filters.agentId] : null);
+    const peerIds = filters.peerIds || (filters.peerId ? [filters.peerId] : null);
+    const ownerIds = filters.ownerAgentIds || filters.ownerPeerIds
+      ? new Set([
+        ...(union(this.byAgent, filters.ownerAgentIds) || []),
+        ...(union(this.byPeer, filters.ownerPeerIds) || []),
+      ])
+      : null;
+    const groups = [
+      union(this.byEventType, eventTypes),
+      union(this.byOrganization, orgs),
+      union(this.byAgent, agentIds),
+      union(this.byPeer, peerIds),
+      ownerIds,
+      filters.txId ? this.byTxId.get(filters.txId) : null,
+      filters.correlationId ? this.byCorrelationId.get(filters.correlationId) : null,
+      filters.source ? this.bySource.get(filters.source) : null,
     ].filter(Boolean);
     let candidates;
-    if (keys.length) {
-      const smallest = keys.reduce((current, next) => next.size < current.size ? next : current);
+    if (groups.length) {
+      const smallest = groups.reduce((current, next) => next.size < current.size ? next : current);
       candidates = [...smallest].map((eventId) => this.records.get(eventId)).filter(Boolean);
     } else {
       candidates = [...this.records.values()];
@@ -296,17 +325,30 @@ class NdjsonEventStore extends EventStore {
     const since = filters.since ? Date.parse(filters.since) : Number.NEGATIVE_INFINITY;
     const until = filters.until ? Date.parse(filters.until) : Number.POSITIVE_INFINITY;
     if (Number.isNaN(since) || Number.isNaN(until)) return [];
+    const sort = filters.sort === 'asc' ? 1 : -1;
+    const cursor = filters.cursor;
     return candidates
       .filter((event) => {
         const timestamp = Date.parse(event.timestamp);
-        return (!filters.eventType || event.eventType === filters.eventType) &&
-          (!filters.org || event.org === filters.org) &&
-          (!filters.agentId || event.payload?.agentId === filters.agentId) &&
+        const afterCursor = !cursor || (sort < 0
+          ? timestamp < Date.parse(cursor.timestamp) || (timestamp === Date.parse(cursor.timestamp) && event.eventId.localeCompare(cursor.eventId) < 0)
+          : timestamp > Date.parse(cursor.timestamp) || (timestamp === Date.parse(cursor.timestamp) && event.eventId.localeCompare(cursor.eventId) > 0));
+        return (!eventTypes || eventTypes.includes(event.eventType)) &&
+          (!orgs || orgs.includes(event.org)) &&
+          (!agentIds || agentIds.includes(event.payload?.agentId)) &&
+          (!peerIds || peerIds.includes(event.peerId)) &&
+          (!ownerIds || ownerIds.has(event.eventId)) &&
           (!filters.txId || event.txId === filters.txId) &&
-          timestamp >= since && timestamp <= until;
+          (!filters.correlationId || event.correlationId === filters.correlationId) &&
+          (!filters.source || event.source === filters.source) &&
+          (!filters.severity || event.severity === filters.severity) &&
+          (!filters.status || event.payload?.status === filters.status) &&
+          (!filters.chaincode || event.payload?.chaincode === filters.chaincode) &&
+          (!filters.functionName || event.payload?.functionName === filters.functionName) &&
+          timestamp >= since && timestamp <= until && afterCursor;
       })
-      .sort((left, right) => Date.parse(right.timestamp) - Date.parse(left.timestamp) ||
-        String(right.eventId).localeCompare(String(left.eventId)))
+      .sort((left, right) => sort * (Date.parse(left.timestamp) - Date.parse(right.timestamp) ||
+        String(left.eventId).localeCompare(String(right.eventId))))
       .slice(0, limit);
   }
 

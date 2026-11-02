@@ -15,6 +15,7 @@ function createRateLimiter(options) {
   const entries = new Map();
   const windowMs = options.windowMs || 60000;
   const limit = options.limit || 300;
+  const message = options.message || 'Ingest rate limit exceeded.';
   return function rateLimit(req, res, next) {
     const now = Date.now();
     const key = req.ip || req.socket.remoteAddress || 'unknown';
@@ -29,7 +30,7 @@ function createRateLimiter(options) {
         if (now - current.startedAt >= windowMs) entries.delete(address);
       }
     }
-    if (entry.count > limit) return res.status(429).json({ success: false, error: 'Ingest rate limit exceeded.' });
+    if (entry.count > limit) return res.status(429).json({ success: false, error: message });
     return next();
   };
 }

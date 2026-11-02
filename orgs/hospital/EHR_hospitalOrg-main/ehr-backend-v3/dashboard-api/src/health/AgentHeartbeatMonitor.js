@@ -98,6 +98,16 @@ class AgentHeartbeatMonitor {
     };
   }
 
+  getAgentStates(now = Date.now()) {
+    const threshold = this.intervalMs * this.missedIntervals;
+    return Object.fromEntries([...this.agents.entries()].map(([agentId, state]) => [agentId, {
+      status: state.offline || now - state.lastSeenAt >= threshold ? 'OFFLINE' : 'ONLINE',
+      lastHeartbeat: new Date(state.lastSeenAt).toISOString(),
+      org: state.org,
+      mock: state.mock === true,
+    }]));
+  }
+
   close() {
     this.closed = true;
     if (this.timer) clearInterval(this.timer);

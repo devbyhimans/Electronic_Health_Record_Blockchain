@@ -4,14 +4,29 @@ const express = require('express');
 const { createAuthenticate } = require('./middleware/authenticate');
 const { errorHandler, notFound } = require('./middleware/errorHandler');
 const logger = require('./logger');
-const { createIngestHandler } = require('./routes/ingest');
+const { createIngestHandler, createRateLimiter } = require('./routes/ingest');
 const { makeDashboardRouter } = require('./realtime/RealtimeServer');
 const { StreamTicketStore } = require('./realtime/StreamTicketStore');
+const { createAggregationRouter } = require('./routes/aggregation');
 
 function createApp(config) {
   const app = express();
   const tickets = config.tickets || new StreamTicketStore();
   app.disable('x-powered-by');
+  app.use((req, res, next) => {
+    res.setHeader('X-Content-Type-Options', 'nosniff');
+    res.setHeader('Referrer-Policy', 'no-referrer');
+    res.setHeader('Cache-Control', 'no-store');
+    const origin = req.get('Origin');
+    if (origin && config.corsAllowedOrigins?.includes(origin)) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+      res.setHeader('Access-Control-Allow-Headers', 'Authorization, Content-Type, Last-Event-ID');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+    }
+    if (req.method === 'OPTIONS') return res.sendStatus(origin && config.corsAllowedOrigins?.includes(origin) ? 204 : 403);
+    return next();
+  });
   app.use(express.json({ limit: config.ingestMaxBodyBytes || '1mb', strict: true }));
   app.use((req, res, next) => {
     const startedAt = process.hrtime.bigint();
@@ -44,6 +59,7 @@ function createApp(config) {
   app.locals.dashboardConfig = config;
   app.locals.dashboardStore = config.store || null;
   app.locals.dashboardTickets = tickets;
+  app.use('/api/dashboard', createRateLimiter({ limit: config.apiRateLimit || 600, message: 'Dashboard API rate limit exceeded.' }));
   app.locals.realtime = config.realtime || {
     openSse: (_req, res) => res.status(503).json({ success: false, error: 'Dashboard stream is not available.' }),
   };
@@ -53,6 +69,7 @@ function createApp(config) {
     store: config.store,
     getRealtime: () => app.locals.realtime,
   }));
+  app.use('/api/dashboard', createAggregationRouter(config));
   app.post('/internal/events', ...createIngestHandler({
     store: config.store,
     eventHub: config.eventHub,

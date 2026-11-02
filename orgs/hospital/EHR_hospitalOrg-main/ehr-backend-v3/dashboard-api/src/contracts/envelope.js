@@ -1,6 +1,6 @@
 'use strict';
 
-const { EVENT_REGISTRY, TRACE_STAGES, TRACE_STATUSES } = require('./eventRegistry');
+const { EVENT_REGISTRY, TRACE_STATUSES } = require('./eventRegistry');
 
 const REQUIRED_FIELDS = Object.freeze([
   'schemaVersion', 'eventId', 'eventType', 'timestamp', 'source', 'org', 'severity', 'payload',
@@ -25,6 +25,7 @@ const BOOLEAN_FIELDS = new Set(['fallbackUsed']);
 const STRING_FIELDS = new Set([
   'agentId', 'component', 'status', 'reasonCode', 'errorCode', 'chaincode', 'functionName',
   'creatorMsp', 'humanReviewStatus', 'stage', 'stageStatus', 'cid', 'expiresAt',
+  'model', 'modelVersion', 'vcapStatus', 'ruleId', 'subjectId', 'alertSeverity',
 ]);
 const SENSITIVE_KEYS = new Set([
   'patientid', 'patientname', 'firstname', 'lastname', 'fullname', 'dob', 'dateofbirth',
@@ -106,7 +107,7 @@ function validateEventEnvelope(input, options = {}) {
     return error('patientIdHash must be a keyed hash');
   }
   if (input.eventType === 'AGENT_STAGE_UPDATED') {
-    if (!TRACE_STAGES.includes(input.payload.stage)) return error('Unsupported trace stage');
+    if (!isSafeIdentifier(input.payload.stage)) return error('Invalid trace stage');
     if (!TRACE_STATUSES.includes(input.payload.stageStatus)) return error('Unsupported trace status');
   }
   return { valid: true };

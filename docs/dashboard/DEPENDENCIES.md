@@ -13,8 +13,9 @@
 | Security/VCAP | Security team | Not connected. | Consent/access, emergency-access, VCAP and audit events without PHI. |
 | IPFS health | IPFS service owner | Existing `/health` is public; runtime not verified. | Status and aggregate counts only; no payload retrieval. |
 | Persistent event store | Group 1 | Implemented in Phase 2 as `EventStore` / `NdjsonEventStore`, Node built-ins only. | Single-process append-only NDJSON cache with in-memory indexes, retention, and restart recovery. |
-| Dashboard auth/stream clients | Security / dashboard | Implemented ticket endpoint and role-filtered WS/SSE. | Stream ticket lifetime is 30 seconds max, one-time, and bound to the verified user/role; deployment access logs must redact ticket query parameters. |
-| Demo producer | Group 1 | Implemented as separate `npm run mock:events` and `npm run demo` commands. | Mock is accepted only with `DASHBOARD_ALLOW_MOCK=true` and always carries `mock: true`. |
+| Dashboard auth/stream clients | Security / dashboard | Implemented ticket endpoint, REST role filters, and role-filtered WS/SSE. | Stream ticket lifetime is 30 seconds max, one-time, and bound to the verified user/role; deployment access logs must redact ticket query parameters. |
+| Dashboard portal API wiring | Harsh / Group 1 | Existing portal calls only agent detail and expects a legacy flat shape; Phase 5 remains pending. | Keep canonical `{ success, data }` API response and map it in the portal; do not add fake fallback values. |
+| Demo producer | Group 1 | `npm run demo` sends labelled events and exercises local HTTP routes for the role matrix. | Mock is accepted only with `DASHBOARD_ALLOW_MOCK=true` and always carries `mock: true`. |
 | Dashboard deployment | Group 1 / Phase 6 | Shared files unchanged. | Optional Compose profile, Nginx routes and startup wiring as reviewed diffs. |
 
 Every unavailable producer must remain marked `TODO(dependency: <team>)` and display as not connected. Mock fixtures are separate from live events and must be visibly labelled.

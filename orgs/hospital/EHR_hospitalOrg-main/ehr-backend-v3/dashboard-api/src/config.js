@@ -138,8 +138,28 @@ function loadConfig() {
     'DASHBOARD_AUTHZ_CONFIG',
     `${defaultConfigBase}/authorization.json`,
   );
+  const thresholdsPath = resolveRepositoryFile(
+    repoRoot,
+    'DASHBOARD_THRESHOLDS_CONFIG',
+    `${defaultConfigBase}/thresholds.json`,
+  );
   const topology = resolveTopologyEndpoints(readJson(topologyPath, 'topology'));
   const authorization = readJson(authorizationPath, 'authorization');
+  const thresholds = readJson(thresholdsPath, 'alert thresholds');
+  if (!thresholds || thresholds.version !== 1 || !thresholds.rules || typeof thresholds.rules !== 'object') {
+    throw new Error('Alert thresholds must define version 1 and a rule map');
+  }
+  for (const [ruleId, rule] of Object.entries(thresholds.rules)) {
+    if (!/^[a-z][a-z0-9_]{0,63}$/.test(ruleId) || !['CRITICAL', 'HIGH', 'WARNING'].includes(rule.severity) || typeof rule.enabled !== 'boolean') {
+      throw new Error(`Invalid alert rule configuration: ${ruleId}`);
+    }
+    for (const [field, value] of Object.entries(rule)) {
+      if (['latencyMs', 'failureRate', 'mvccRate', 'count', 'ledgerLagBlocks'].includes(field) &&
+          (!Number.isFinite(value) || value < 0 || (['failureRate', 'mvccRate'].includes(field) && value > 1) || (field === 'count' && !Number.isInteger(value)))) {
+        throw new Error(`Invalid ${field} threshold in alert rule ${ruleId}`);
+      }
+    }
+  }
   if (authorization.default !== 'deny' || !authorization.roles || typeof authorization.roles !== 'object') {
     throw new Error('Authorization configuration must define a role map with default deny');
   }
@@ -178,6 +198,18 @@ function loadConfig() {
   const streamReplayLimit = positiveInteger(process.env, 'DASHBOARD_STREAM_REPLAY_LIMIT', 200, 1, 1000);
   const ingestMaxBodyBytes = positiveInteger(process.env, 'DASHBOARD_INGEST_MAX_BODY_BYTES', 1048576, 1024, 16777216);
   const ingestMaxBatchSize = positiveInteger(process.env, 'DASHBOARD_INGEST_MAX_BATCH_SIZE', 100, 1, 1000);
+  const apiRateLimit = positiveInteger(process.env, 'DASHBOARD_API_RATE_LIMIT', 600, 1, 100000);
+  const alertEvaluationIntervalMs = positiveInteger(process.env, 'DASHBOARD_ALERT_EVALUATION_INTERVAL_MS', thresholds.evaluationIntervalMs ?? 5000, 1000, 3600000);
+  const alertMinimumDurationMs = positiveInteger(process.env, 'DASHBOARD_ALERT_MINIMUM_DURATION_MS', thresholds.minimumDurationMs ?? 10000, 0, 3600000);
+  const alertResolveDurationMs = positiveInteger(process.env, 'DASHBOARD_ALERT_RESOLVE_DURATION_MS', thresholds.resolveDurationMs ?? 10000, 0, 3600000);
+  const corsAllowedOrigins = (process.env.DASHBOARD_CORS_ALLOWED_ORIGINS || '').split(',').map((origin) => origin.trim()).filter(Boolean);
+  for (const origin of corsAllowedOrigins) {
+    let parsed;
+    try { parsed = new URL(origin); } catch { throw new Error('DASHBOARD_CORS_ALLOWED_ORIGINS contains an invalid origin'); }
+    if (!['http:', 'https:'].includes(parsed.protocol) || parsed.origin !== origin) {
+      throw new Error('DASHBOARD_CORS_ALLOWED_ORIGINS entries must be exact HTTP(S) origins');
+    }
+  }
   const fabricMsp = topology.organizations.find((org) => org.role === 'hospital')?.id || '';
 
   return Object.freeze({
@@ -215,6 +247,7 @@ function loadConfig() {
     allowMock: String(process.env.DASHBOARD_ALLOW_MOCK || 'false').toLowerCase() === 'true',
     serviceKey: process.env.DASHBOARD_SERVICE_KEY || '',
     ingestRateLimit: positiveInteger(process.env, 'DASHBOARD_INGEST_RATE_LIMIT', 300, 1, 100000),
+    apiRateLimit,
     ingestMaxBodyBytes,
     ingestMaxBatchSize,
     stream: {
@@ -223,10 +256,18 @@ function loadConfig() {
       heartbeatMs: streamHeartbeatMs,
       replayLimit: streamReplayLimit,
     },
+    alertThresholds: {
+      ...thresholds,
+      evaluationIntervalMs: alertEvaluationIntervalMs,
+      minimumDurationMs: alertMinimumDurationMs,
+      resolveDurationMs: alertResolveDurationMs,
+    },
+    corsAllowedOrigins,
     topology,
     authorization,
     topologyPath: path.relative(repoRoot, topologyPath),
     authorizationPath: path.relative(repoRoot, authorizationPath),
+    thresholdsPath: path.relative(repoRoot, thresholdsPath),
   });
 }
 

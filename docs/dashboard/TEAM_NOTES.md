@@ -55,6 +55,15 @@ The role matrix lives in `dashboard-api/config/authorization.json`. Unknown role
 Group 1 dashboard track owner: Himanshu. Cross-team integration owners are listed in `docs/dashboard/DEPENDENCIES.md` as that inventory is completed.
 # Dashboard API team notes
 
+## Phase 4: aggregation API
+
+- Authenticated REST aggregation is mounted at `/api/dashboard`; `/internal/events` remains ingest-only and must not be published through Nginx.
+- Aggregations use the EventStore, configured topology, and observed health-poller state. Missing values use `null` plus `NOT_CONNECTED` / `NO_DATA`; CPU, memory, disk, peer height/ledger lag, and IPFS storage use remain unavailable until a real allowed source exists.
+- The role map includes the approved peer pages: doctor `peer1.hospital`, nurse `peer2.hospital`, pharmacist `peer2.hospital`, diagnostics roles `peer0.diagnostic`. It remains in `dashboard-api/config/authorization.json` with default deny.
+- `thresholds.json` drives persisted alert events and configurable evaluation/minimum/resolve timings. `ledger_lag_high` is configured but cannot evaluate until comparable real heights exist.
+- `npm run demo` exercises API routes over HTTP with labelled synthetic data and role-specific test JWTs. Mock events are never inserted into a real deployment unless mock acceptance is explicitly enabled.
+- The existing portal expects a flat legacy agent-detail shape; see `docs/dashboard/api-requirements.md`. The API keeps the canonical `{ success, data }` response pending Phase 5 portal wiring.
+
 ## Phase 3: collector, health polling, and realtime
 
 - Fabric collection is optional. It reads only committed block events and records transaction metadata (tx id, channel, chaincode/function, creator MSP, validation code, block number, timestamp). It never stores invocation arguments, read/write sets, or transaction payloads.

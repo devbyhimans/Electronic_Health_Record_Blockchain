@@ -13,6 +13,8 @@ const { RealtimeServer } = require('./realtime/RealtimeServer');
 const { StreamTicketStore } = require('./realtime/StreamTicketStore');
 const http = require('node:http');
 const logger = require('./logger');
+const { MetricsService } = require('./aggregation/metrics');
+const { AlertEngine } = require('./aggregation/AlertEngine');
 
 async function start(options = {}) {
   const config = options.config || loadConfig();
@@ -54,7 +56,16 @@ async function start(options = {}) {
     })),
     ...(options.collectorWait ? { wait: options.collectorWait } : {}),
   });
-  const app = createApp({ ...config, store, eventHub, tickets, heartbeatMonitor, healthPoller, collector });
+  const metrics = options.metrics || new MetricsService({ store, cacheTtlMs: 3000 });
+  const alertEngine = options.alertEngine || new AlertEngine({
+    store, eventHub, healthPoller, heartbeatMonitor, metrics,
+    thresholds: config.alertThresholds,
+    organizations: config.fabric.organizations,
+    intervalMs: config.alertThresholds.evaluationIntervalMs,
+    minimumDurationMs: config.alertThresholds.minimumDurationMs,
+    resolveDurationMs: config.alertThresholds.resolveDurationMs,
+  });
+  const app = createApp({ ...config, store, eventHub, tickets, heartbeatMonitor, healthPoller, collector, metrics, alertEngine });
   const server = http.createServer(app);
   const realtime = options.realtime || new RealtimeServer({
     httpServer: server,
@@ -71,6 +82,7 @@ async function start(options = {}) {
     if (closing) return;
     closing = true;
     await collector.close();
+    alertEngine.close();
     await healthPoller.close();
     heartbeatMonitor.close();
     realtime.close();
@@ -94,11 +106,12 @@ async function start(options = {}) {
     logger.info('service_started', { port: config.port });
     healthPoller.start();
     heartbeatMonitor.start();
+    alertEngine.start();
     collector.start();
   });
   process.once('SIGINT', shutdown);
   process.once('SIGTERM', shutdown);
-  server.dashboard = { store, collector, healthPoller, heartbeatMonitor, realtime, eventHub, shutdown };
+  server.dashboard = { store, collector, healthPoller, heartbeatMonitor, realtime, eventHub, metrics, alertEngine, shutdown };
   return server;
 }
 

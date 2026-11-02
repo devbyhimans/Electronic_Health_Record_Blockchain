@@ -26,7 +26,7 @@ const event = (category, payloadFields, producer = 'TODO(dependency: producer te
 
 const HEALTH = ['component', 'status', 'reasonCode', 'latencyMs', 'blockHeight', 'agentId'];
 const TX = ['chaincode', 'functionName', 'creatorMsp', 'validationCode', 'agentId', 'durationMs', 'reasonCode', 'patientIdHash'];
-const AGENT = ['agentId', 'status', 'durationMs', 'errorCode', 'modelFingerprint', 'fallbackUsed', 'humanReviewStatus', 'stage', 'stageStatus', 'patientIdHash', 'recordHash', 'cid'];
+const AGENT = ['agentId', 'status', 'durationMs', 'errorCode', 'model', 'modelVersion', 'modelFingerprint', 'vcapStatus', 'fallbackUsed', 'humanReviewStatus', 'stage', 'stageStatus', 'patientIdHash', 'recordHash', 'cid'];
 const ACCESS = ['agentId', 'reasonCode', 'status', 'patientIdHash', 'granteeIdHash', 'expiresAt'];
 const IPFS = ['component', 'status', 'reasonCode', 'latencyMs', 'cid', 'byteLength', 'durationMs', 'errorCode', 'artifactCount', 'agentId'];
 const VCAP = ['agentId', 'status', 'recordHash', 'promptHash', 'summaryHash', 'modelFingerprint', 'gatewaySignerHash', 'patientIdHash', 'errorCode', 'durationMs'];
@@ -43,6 +43,9 @@ const EVENT_REGISTRY = Object.freeze({
   API_STATUS_CHANGED: event('health', HEALTH, 'API health endpoint'),
   API_DOWN: event('health', HEALTH, 'API health endpoint'),
   API_ACTION_EVALUATED: event('security', ['component', 'status', 'reasonCode', 'agentId'], 'TODO(dependency: API gateway owners)'),
+  ALERT_RAISED: event('alert', ['ruleId', 'subjectId', 'status', 'reasonCode', 'alertSeverity']),
+  ALERT_RESOLVED: event('alert', ['ruleId', 'subjectId', 'status', 'reasonCode', 'alertSeverity']),
+  ALERT_ACKNOWLEDGED: event('alert', ['ruleId', 'subjectId', 'status', 'reasonCode', 'alertSeverity']),
   CA_STATUS_CHANGED: event('health', HEALTH, 'Fabric CA operations endpoint'),
   LAB_STATUS_CHANGED: event('health', HEALTH, 'Lab gateway'),
   LAB_DOWN: event('health', HEALTH, 'Lab gateway'),
@@ -85,6 +88,7 @@ const EVENT_REGISTRY = Object.freeze({
   VCAP_VERIFICATION_FAILED: event('vcap', VCAP, 'TODO(dependency: Security team)'),
   IPFS_UPLOAD_COMPLETED: event('ipfs', IPFS, 'IPFS service'),
   IPFS_UPLOAD_FAILED: event('ipfs', IPFS, 'IPFS service'),
+  IPFS_RESOLUTION_FAILED: event('ipfs', IPFS, 'IPFS service'),
   IPFS_NODE_DOWN: event('ipfs', IPFS, 'IPFS health endpoint'),
   IPFS_STATUS_CHANGED: event('ipfs', IPFS, 'IPFS health endpoint'),
 });
