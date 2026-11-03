@@ -42,12 +42,12 @@ The standalone Digilocker proposal has no runnable service in this workspace.
 
 ```mermaid
 flowchart TB
-  Browser["User in browser"] --> Hub["Nginx :80<br/>Workspace hub /"]
-  Browser --> HospitalUI["Hospital portal<br/>Vite :5173"]
-  Hub --> PatientUI["Patient portal<br/>/patient/ → :5174"]
-  Hub --> DashUI["Optional dashboard<br/>/dashboard/ → :5176"]
-  Hub --> LabUI["Lab console<br/>/lab/ → gateway :3006 host"]
-  Hub --> PharmUI["Pharmacy UIs<br/>/pharmacy/* → Vite apps"]
+  Browser["User in browser"] --> Hub["Nginx :80 (Workspace hub /)"]
+  Browser --> HospitalUI["Hospital portal :5173"]
+  Hub --> PatientUI["Patient portal /patient/ (:5174)"]
+  Hub --> DashUI["System dashboard /dashboard/ (:5176)"]
+  Hub --> LabUI["Lab console /lab/ (:3006)"]
+  Hub --> PharmUI["Pharmacy UIs /pharmacy/* (:5175)"]
 
   HospitalUI --> P0["peer0-api :4001"]
   HospitalUI --> P1["peer1-api :4002"]
@@ -56,19 +56,19 @@ flowchart TB
   LabUI --> LabGateway["Lab node-gateway :3006 host"]
   PharmUI --> PharmAPI["p-backend :3000"]
 
-  P0 --> Fabric[("Fabric ehrchannel<br/>HospitalMSP")]
+  P0 --> Fabric[("Fabric ehrchannel (HospitalMSP)")]
   P1 --> Fabric
   P2 --> Fabric
   PatientAPI --> Fabric
-  Ext["extorg-api :4004"] --> FabricOrgs[("DiagnosticsMSP<br/>ProviderMSP")]
+  Ext["extorg-api :4004"] --> FabricOrgs[("DiagnosticsMSP & ProviderMSP")]
   IPFSAPI["ipfs-service :4006"] --> IPFS[("Kubo IPFS")]
-  P0 -. "optional dashboard block observer" .-> DashAPI["dashboard-api :4010"]
-  P1 -. "optional dashboard block observer" .-> DashAPI
-  P2 -. "optional dashboard block observer" .-> DashAPI
+  P0 -.->|optional block observer| DashAPI["dashboard-api :4010"]
+  P1 -.->|optional block observer| DashAPI
+  P2 -.->|optional block observer| DashAPI
   DashAPI --> DashUI
-  DashAPI -. "producer integrations pending" .-> Producer["AI / FHIR / Security / lab / pharmacy emitters"]
-  PharmAPI -. "legacy config; not connected to current Fabric by default" .-> Fabric
-  Digi["Digilocker proposal only"] -. "not implemented" .-> Hub
+  DashAPI -.->|producer integrations pending| Producer["AI / FHIR / Security / lab / pharmacy emitters"]
+  PharmAPI -.->|legacy config - not connected by default| Fabric
+  Digi["Digilocker proposal only"] -.->|not implemented| Hub
 ```
 
 The current Fabric topology is configured through the Fabric network files. The local default channel is `ehrchannel`; the organizations are `HospitalMSP`, `DiagnosticsMSP`, and `ProviderMSP`. Dashboard topology values live in its configuration and can be changed there. Some legacy service code still contains fixed network assumptions; the current dashboard topology uses configuration rather than a peer IP list.
