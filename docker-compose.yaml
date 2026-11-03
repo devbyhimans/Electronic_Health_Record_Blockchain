@@ -152,6 +152,7 @@ services:
     env_file:
       - ./orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/dashboard-api/.env
     environment:
+      DASHBOARD_FABRIC_GATEWAY_ENDPOINT: peer0.hospital.example.com:7051
       DASHBOARD_PEER_HOSPITAL_RECEPTION: peer0.hospital.example.com:7051
       DASHBOARD_PEER_HOSPITAL_DOCTOR: peer1.hospital.example.com:9051
       DASHBOARD_PEER_HOSPITAL_NURSE: peer2.hospital.example.com:10051

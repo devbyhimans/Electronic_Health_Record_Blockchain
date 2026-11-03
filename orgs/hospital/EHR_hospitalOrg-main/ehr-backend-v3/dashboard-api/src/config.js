@@ -68,8 +68,10 @@ function resolveCredentialPath(root, value, label) {
   const relative = path.relative(root, resolved);
   const credentialsDirectory = path.resolve(__dirname, '..', 'credentials');
   const credentialRelative = path.relative(credentialsDirectory, resolved);
-  if (!relative || relative.startsWith('..') || path.isAbsolute(relative) ||
-      credentialRelative.startsWith('..') || path.isAbsolute(credentialRelative)) {
+  const repoCredentialRelative = path.relative(path.resolve(root, 'orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/dashboard-api/credentials'), resolved);
+  const isUnderCredentials = (!credentialRelative.startsWith('..') && !path.isAbsolute(credentialRelative)) ||
+                             (!repoCredentialRelative.startsWith('..') && !path.isAbsolute(repoCredentialRelative));
+  if (!relative || relative.startsWith('..') || path.isAbsolute(relative) || !isUnderCredentials) {
     throw new Error(`${label} must be under dashboard-api/credentials`);
   }
   return resolved;

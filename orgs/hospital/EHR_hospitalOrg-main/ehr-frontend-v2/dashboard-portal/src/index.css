@@ -91,3 +91,68 @@ html[data-theme=dark] .block-analytics-heading h2,html[data-theme=dark] .block-s
 
 /* Theme control stays in the app header/sidebar flow; it never overlays page content. */
 .theme-toggle{position:static!important;inset:auto!important;z-index:auto!important;flex:0 0 auto;box-shadow:0 4px 14px rgba(30,55,90,.12)}
+
+/* Block Chain Stream & Explorer */
+.block-chain-container{display:flex;align-items:center;gap:6px;overflow-x:auto;padding:18px 6px 20px;scrollbar-width:thin}
+.block-card-wrapper{position:relative;flex:0 0 auto;display:flex;align-items:center}
+.block-connector{width:16px;height:2px;background:#dce5ef;flex-shrink:0}
+.block-item{position:relative;display:flex;flex-direction:column;gap:5px;min-width:130px;max-width:150px;padding:11px 13px;border:1px solid #e2e8f0;border-radius:14px;background:#fff;box-shadow:0 3px 12px rgba(30,50,80,.05);cursor:pointer;transition:all .2s ease}
+.block-item:hover{border-color:#3b82f6;transform:translateY(-3px);box-shadow:0 8px 24px rgba(59,130,246,.18)}
+.block-item.is-latest{border-color:#3b82f677;background:linear-gradient(145deg,#ffffff,#f0f7ff)}
+.block-top-row{display:flex;align-items:center;justify-content:space-between;gap:6px}
+.block-number-tag{display:flex;align-items:center;gap:5px;font-size:12px;font-weight:750;color:#1e293b}
+.block-latest-badge{font-size:8px;font-weight:800;letter-spacing:.05em;padding:2px 5px;border-radius:5px;background:#ecfdf5;color:#059669;text-transform:uppercase}
+.block-hash-preview{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:10px;color:#64748b;background:#f8fafc;padding:3px 6px;border-radius:6px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.block-meta-row{display:flex;align-items:center;justify-content:space-between;font-size:10px;color:#94a3b8}
+
+/* Block Hover Tooltip Popover & Floating Tooltip */
+.block-item.is-selected{border-color:#3b82f6;box-shadow:0 0 0 3px rgba(59,130,246,.35);transform:translateY(-2px)}
+.block-floating-tooltip{position:fixed;width:370px;max-width:92vw;background:#ffffff;border:1px solid #cbd5e1;border-radius:16px;padding:16px;box-shadow:0 24px 50px rgba(15,23,42,.3);z-index:99999;pointer-events:auto;animation:blockTooltipIn .15s cubic-bezier(.16,1,.3,1)}
+@keyframes blockTooltipIn{from{opacity:0;transform:translate(-50%,8px) scale(.97)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
+.block-floating-tooltip.arrow-down::after{content:'';position:absolute;top:100%;left:50%;transform:translateX(-50%);border-width:7px;border-style:solid;border-color:#ffffff transparent transparent transparent}
+.block-floating-tooltip.arrow-up::after{content:'';position:absolute;bottom:100%;left:50%;transform:translateX(-50%);border-width:7px;border-style:solid;border-color:transparent transparent #ffffff transparent}
+
+/* Dedicated Inspector Panel below the stream */
+.block-inspector-panel{margin-top:16px;padding:18px 20px;border-radius:16px;background:#f8fafc;border:1px solid #e2e8f0;box-shadow:inset 0 1px 3px rgba(0,0,0,.03);animation:panelFadeIn .2s ease}
+@keyframes panelFadeIn{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.block-inspector-header{display:flex;align-items:center;justify-content:space-between;padding-bottom:12px;border-bottom:1px solid #e2e8f0}
+
+.block-tooltip-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #f1f5f9}
+.block-tooltip-title{display:flex;align-items:center;gap:7px;font-size:14px;font-weight:750;color:#0f172a}
+.block-field{margin-bottom:10px}
+.block-field:last-child{margin-bottom:0}
+.block-field-label{font-size:10px;font-weight:650;color:#64748b;text-transform:uppercase;letter-spacing:.04em;margin-bottom:3px;display:flex;align-items:center;justify-content:space-between}
+.block-field-value{font-family:ui-monospace,SFMono-Regular,Menlo,Monaco,Consolas,monospace;font-size:11px;background:#f8fafc;border:1px solid #e2e8f0;border-radius:8px;padding:6px 9px;color:#1e293b;word-break:break-all;display:flex;align-items:center;justify-content:space-between;gap:8px}
+.copy-btn{border:none;background:transparent;cursor:pointer;color:#64748b;padding:3px;display:flex;align-items:center;border-radius:5px;transition:all .15s}
+.copy-btn:hover{color:#2563eb;background:#eff6ff}
+
+/* Custom Chart Tooltip */
+.chart-custom-tooltip{background:#ffffff;border:1px solid #cbd5e1;border-radius:12px;padding:12px;box-shadow:0 12px 30px rgba(15,23,42,.15);min-width:200px}
+.chart-tooltip-time{font-size:11px;font-weight:700;color:#0f172a;margin-bottom:6px}
+.chart-tooltip-stats{display:flex;gap:12px;font-size:11px;color:#475569;margin-bottom:6px}
+.chart-tooltip-blocks{border-top:1px solid #f1f5f9;padding-top:6px;font-size:10px;color:#64748b;display:flex;flex-direction:column;gap:3px}
+.chart-tooltip-block-row{display:flex;align-items:center;justify-content:space-between;gap:8px}
+
+/* Dark mode for Block Chain & Tooltip */
+html[data-theme=dark] .block-connector{background:#26385d}
+html[data-theme=dark] .block-item{background:#111a30;border-color:#26385d;box-shadow:0 3px 12px rgba(0,0,0,.3)}
+html[data-theme=dark] .block-item:hover{border-color:#60a5fa;box-shadow:0 8px 24px rgba(96,165,250,.2)}
+html[data-theme=dark] .block-item.is-selected{border-color:#60a5fa;box-shadow:0 0 0 3px rgba(96,165,250,.35)}
+html[data-theme=dark] .block-item.is-latest{background:linear-gradient(145deg,#111a30,#192a4e);border-color:#3b82f688}
+html[data-theme=dark] .block-number-tag{color:#f8fafc}
+html[data-theme=dark] .block-latest-badge{background:#064e3b;color:#34d399}
+html[data-theme=dark] .block-hash-preview{background:#172540;color:#94a3b8}
+html[data-theme=dark] .block-floating-tooltip{background:#111a30;border-color:#26385d;box-shadow:0 24px 50px rgba(0,0,0,.85)}
+html[data-theme=dark] .block-floating-tooltip.arrow-down::after{border-color:#111a30 transparent transparent transparent}
+html[data-theme=dark] .block-floating-tooltip.arrow-up::after{border-color:transparent transparent #111a30 transparent}
+html[data-theme=dark] .block-inspector-panel{background:#0e172a;border-color:#1e2d4d}
+html[data-theme=dark] .block-inspector-header{border-bottom-color:#1e2d4d}
+html[data-theme=dark] .block-tooltip-header{border-bottom-color:#1e2d4d}
+html[data-theme=dark] .block-tooltip-title{color:#f8fafc}
+html[data-theme=dark] .block-field-label{color:#94a3b8}
+html[data-theme=dark] .block-field-value{background:#16233d;border-color:#26385d;color:#e2e8f0}
+html[data-theme=dark] .copy-btn:hover{color:#60a5fa;background:#1e3256}
+html[data-theme=dark] .chart-custom-tooltip{background:#111a30;border-color:#26385d;box-shadow:0 12px 30px rgba(0,0,0,.6)}
+html[data-theme=dark] .chart-tooltip-time{color:#f8fafc}
+html[data-theme=dark] .chart-tooltip-stats{color:#cbd5e1}
+html[data-theme=dark] .chart-tooltip-blocks{border-top-color:#1e2d4d;color:#94a3b8}

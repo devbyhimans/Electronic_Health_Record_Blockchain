@@ -21,7 +21,7 @@ const TRANSACTION_TYPES = ['TRANSACTION_SUBMITTED', 'TRANSACTION_COMMITTED', 'TR
 const ALLOWED_SEVERITIES = ['INFO', 'WARNING', 'ERROR', 'CRITICAL'];
 const ALLOWED_SORTS = ['asc', 'desc'];
 const WINDOW_NAMES = ['1m', '5m', '1h', '24h'];
-const BLOCK_WINDOW_NAMES = ['24h', '7d', '30d'];
+const BLOCK_WINDOW_NAMES = ['24h', '7d', '30d', 'all'];
 
 function forbidden(res) { return res.status(403).json({ success: false, error: 'Role is not permitted to access this dashboard resource.' }); }
 function requirePage(page, authorization) {
@@ -160,7 +160,12 @@ function createAggregationRouter(config) {
     const window = parseEnum(req.query, 'window', BLOCK_WINDOW_NAMES) || '24h';
     const events = config.store.query({ eventTypes: [...new Set(['TRANSACTION_COMMITTED', 'TRANSACTION_FAILED', 'MVCC_CONFLICT', 'ENDORSEMENT_FAILED'])], limit: 1000000 });
     const collectorStatus = config.collector?.getStatus?.() || null;
-    res.json(success(buildBlockMetrics(events, { window, collectorStatus })));
+    const recentBlocks = config.collector?.getRecentBlocks?.() || [];
+    res.json(success(buildBlockMetrics(events, { window, collectorStatus, recentBlocks })));
+  });
+  router.get('/blocks', page('overview'), (_req, res) => {
+    const recentBlocks = config.collector?.getRecentBlocks?.() || [];
+    res.json(success({ items: recentBlocks }));
   });
   router.get('/transactions', page('transactions'), (req, res) => {
     const { limit, cursor, filters } = queryBase(req, { eventTypes: TRANSACTION_TYPES });

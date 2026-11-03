@@ -37,6 +37,23 @@ test('block metrics return unavailable rather than synthetic zeros without retai
   assert.equal(result.status.state, 'NO_DATA');
 });
 
+test('block metrics support all time window and retain blocks metadata', () => {
+  const now = Date.UTC(2026, 10, 3, 12);
+  const events = [
+    tx('a', 'tx-1', 100, now - 90 * 60 * 1000),
+    tx('old', 'tx-old', 1, now - 48 * 60 * 60 * 1000),
+  ];
+  const recentBlocks = [
+    { blockNumber: 100, blockHash: 'hash100', timestamp: new Date(now - 90 * 60 * 1000).toISOString() },
+    { blockNumber: 1, blockHash: 'hash1', timestamp: new Date(now - 48 * 60 * 60 * 1000).toISOString() },
+  ];
+  const result = buildBlockMetrics(events, { window: 'all', now, recentBlocks, collectorStatus: { status: 'CONNECTED', lastProcessedBlock: '100' } });
+  assert.equal(result.observedBlocksInWindow, 2);
+  assert.equal(result.transactionsInWindow, 2);
+  assert.equal(result.blocks.length, 2);
+  assert.equal(result.blocks[0].blockHash, 'hash100');
+});
+
 test('block metrics reject unsupported windows', () => {
   assert.throws(() => buildBlockMetrics([], { window: '1y' }), /window must be/);
 });

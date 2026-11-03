@@ -41,6 +41,19 @@ function createApp(config) {
     next();
   });
 
+  app.get(['/', '/dashboard', '/dashboard/'], (req, res) => {
+    if (req.accepts('html')) {
+      return res.redirect('http://localhost/dashboard/');
+    }
+    return res.json({
+      success: true,
+      service: 'dashboard-api',
+      message: 'CareOps EHR Observability API is running.',
+      portal: 'http://localhost/dashboard/',
+      health: '/health',
+    });
+  });
+
   app.get('/health', (_req, res) => res.json({
     success: true,
     service: 'dashboard-api',
