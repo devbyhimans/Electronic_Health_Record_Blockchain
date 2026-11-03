@@ -1,193 +1,59 @@
-# System Architecture Diagrams 📐📊
+# Current system architecture
 
-> **Mermaid.js Visualizations for Architecture, Sequence Flow & Data Entity Relationships**
-
----
-
-## 1. Complete System Architecture Diagram
+This diagram describes the repository's current local Compose wiring. It separates present services from optional or incomplete integrations. A running UI/API container is not evidence that its Fabric, IPFS, or cross-organization dependency is connected.
 
 ```mermaid
 flowchart TB
-    subgraph PresentationLayer["Presentation Layer (React + Vite)"]
-        UI_Admin["Admin Dashboard"]
-        UI_Doctor["Doctor Portal"]
-        UI_Patient["Patient Consent Manager"]
-        UI_Lab["Lab Tech Interface"]
-        UI_Pharm["Pharmacy Inventory Portal"]
-    end
+  Browser["Browser"] --> Nginx["Nginx :80"]
+  Nginx --> Hub["Workspace hub /"]
+  Nginx --> PatientUI["Patient portal /patient/ → :5174"]
+  Nginx --> DashboardUI["Dashboard /dashboard/ → :5176<br/>optional dashboard profile"]
+  Nginx --> LabUI["Lab console /lab/ → node-gateway :3006 host"]
+  Nginx --> PharmUI["Pharmacy /pharmacy/* → separate Vite apps"]
+  Browser --> HospitalUI["Hospital portal :5173"]
 
-    subgraph APILayer["API Gateway & Middleware Layer (Express.js)"]
-        API_Hosp["Hospital Gateway (Port 4000)"]
-        API_Lab["Lab Gateway & AI Proxy (Port 3000)"]
-        API_Pharm["Pharmacy Gateway (Port 4004)"]
-        Auth_JWT["JWT & Fabric Identity Wallet"]
-    end
+  HospitalUI --> P0["peer0-api :4001"]
+  HospitalUI --> P1["peer1-api :4002"]
+  HospitalUI --> P2["peer2-api :4003"]
+  PatientUI --> PatientAPI["patient-api :4005"]
+  LabUI --> LabGateway["Lab gateway :3006 host"]
+  PharmUI --> PharmAPI["p-backend :3000"]
 
-    subgraph AILayer["Agentic AI Pipeline"]
-        Extractor["PDF/Image Text Extractor"]
-        Agent_Triage["Lab Report Analysis Agent"]
-        Agent_CDS["Clinical Decision Support Agent"]
-        Gemini_LLM["Gemini 2.5 Flash API"]
-    end
+  P0 --> Fabric["Fabric channel ehrchannel"]
+  P1 --> Fabric
+  P2 --> Fabric
+  PatientAPI --> Fabric
+  ExtOrg["extorg-api :4004"] --> ExternalOrgs["DiagnosticsMSP / ProviderMSP"]
+  ExternalOrgs --> Fabric
+  IPFSService["ipfs-service :4006"] --> Kubo[("IPFS Kubo")]
 
-    subgraph BlockchainLayer["Hyperledger Fabric v2.5 Blockchain Network"]
-        Orderer["Raft Ordering Service (orderer.example.com)"]
-        
-        subgraph HospOrg["Hospital Org Peers"]
-            Peer_H0["peer0.hospital"]
-            Couch_H0[("CouchDB State")]
-        end
-        
-        subgraph LabOrg["Lab Org Peers"]
-            Peer_L0["peer0.lab"]
-            Couch_L0[("CouchDB State")]
-        end
+  Fabric -. "committed block metadata, when observer identity is configured" .-> Collector["Dashboard collector"]
+  Health["HTTP health checks"] --> Collector
+  Producers["Other event producers"] -. "not connected by default" .-> Ingest["POST /internal/events"]
+  Collector --> Store["NDJSON event cache"]
+  Ingest --> Store
+  Store --> Aggregation["REST aggregation / traces"]
+  Store --> Realtime["WebSocket / SSE"]
+  Aggregation --> DashboardUI
+  Realtime --> DashboardUI
 
-        subgraph PharmOrg["Pharmacy Org Peers"]
-            Peer_P0["peer0.pharmacy"]
-            Couch_P0[("CouchDB State")]
-        end
-    end
-
-    subgraph StorageLayer["Decentralized Storage Layer"]
-        IPFS_Kubo[("IPFS Kubo Node (Port 5001)")]
-    end
-
-    UI_Doctor -->|HTTP REST| API_Hosp
-    UI_Lab -->|Multipart Form| API_Lab
-    UI_Pharm -->|HTTP REST| API_Pharm
-    
-    API_Hosp --> Auth_JWT
-    API_Lab --> Auth_JWT
-    
-    API_Lab --> Extractor
-    Extractor --> Agent_Triage
-    Agent_Triage --> Gemini_LLM
-    Agent_CDS --> Gemini_LLM
-    
-    API_Lab -->|Upload PDF / JSON| IPFS_Kubo
-    Agent_Triage -->|Save AI Output| IPFS_Kubo
-    
-    API_Hosp -->|Signed gRPC| Peer_H0
-    API_Lab -->|Signed gRPC| Peer_L0
-    API_Pharm -->|Signed gRPC| Peer_P0
-    
-    Peer_H0 <--> Orderer
-    Peer_L0 <--> Orderer
-    Peer_P0 <--> Orderer
-    
-    Peer_H0 --- Couch_H0
-    Peer_L0 --- Couch_L0
-    Peer_P0 --- Couch_P0
+  PharmAPI -. "current profile does not match this Fabric topology" .-> Fabric
+  Digilocker["Digilocker proposal; no runnable module"] -.-> Browser
 ```
 
----
+## Request and event paths
 
-## 2. Sequence Diagram: Doctor Updating Patient Health Record
+1. The browser opens the single-entry hub or a portal. Nginx routes `/patient/`, `/dashboard/`, `/pharmacy/…`, and `/lab/`. The hospital staff Vite server is also directly available at port `5173`.
+2. Hospital portal APIs route to peer0, peer1, peer2, extorg, patient, and IPFS services on ports `4001`–`4006`.
+3. Fabric peers share the configured `ehrchannel`; current organization IDs are `HospitalMSP`, `DiagnosticsMSP`, and `ProviderMSP`. The root startup script starts existing Fabric services, but does not enroll identities, reinitialize a channel, or deploy chaincode.
+4. The optional dashboard observes committed Fabric blocks and configured HTTP health endpoints. Its event cache is local NDJSON. Other services must send events to `/internal/events` using the service key; that route is not exposed by Nginx.
+5. The dashboard API supplies role-filtered REST results and WebSocket/SSE events. It does not write to Fabric. Mock events are synthetic, explicitly marked, and separate from real-source status.
+6. The pharmacy UI/API are kept independent. Current pharmacy configuration is not aligned with the active hospital Fabric topology, so ledger-backed pharmacy actions must be shown as unavailable until the owning team supplies the matching integration.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor Doctor as Doctor / Clinician
-    participant UI as React Frontend UI
-    participant API as Backend API Gateway
-    participant IPFS as IPFS Kubo Node
-    participant Fabric as Fabric Peer (peer0)
-    participant Orderer as Raft Orderer Node
-    participant Ledger as Ledger & CouchDB
+## Trust and data boundaries
 
-    Doctor->>UI: Select Patient & Submit Updated Record JSON
-    UI->>API: POST /api/ehr/update (JWT + PatientId + Record JSON)
-    
-    API->>API: Verify JWT & Doctor Role
-    API->>IPFS: Pin Updated EHR JSON Payload
-    IPFS-->>API: Return New IPFS CID (newCID) & SHA256 Digest
-    
-    API->>Fabric: Evaluate CheckAccess(patientId, doctorId, 'ehr')
-    Fabric-->>API: Access Granted (Unexpired On-Chain Grant Verified)
-    
-    API->>Fabric: SubmitTx UpdateEHRCID(patientId, newCID, section, reason)
-    Fabric->>Fabric: Execute Chaincode & Verify Endorsement Policy
-    Fabric->>Orderer: Forward Signed Endorsed Transaction Proposal
-    Orderer->>Orderer: Package Transaction into Block & Consensus Sign
-    Orderer->>Fabric: Broadcast New Block to All Peers
-    Fabric->>Ledger: Commit Block & Update World State Key EHR:patientId
-    Fabric-->>API: Return Transaction Success Confirmation (TxID)
-    API-->>UI: 200 OK (TxID, newCID)
-    UI-->>Doctor: Display Success Toast & Updated Audit History
-```
-
----
-
-## 3. Entity-Relationship Diagram (ERD): On-Chain & Off-Chain Data Entities
-
-```mermaid
-erDiagram
-    PATIENT {
-        string patientId PK
-        string nameHash
-        string dob
-        string gender
-        string createdAt
-    }
-
-    ACCESS_GRANT {
-        string grantId PK
-        string patientId FK
-        string granteeId
-        string sections
-        string expiresAt
-        boolean revoked
-    }
-
-    EHR_RECORD {
-        string patientId PK
-        string currentCID
-        string createdAt
-        string updatedAt
-    }
-
-    CID_HISTORY_ENTRY {
-        string cid PK
-        string patientId FK
-        string updatedBy
-        string updatedAt
-        string section
-        string reason
-    }
-
-    LAB_RESULT {
-        string resultId PK
-        string patientId FK
-        string testCode
-        string collectedAt
-        string status
-        string rawDataCid
-    }
-
-    IPFS_PAYLOAD {
-        string cid PK
-        string sha256Digest
-        int byteLength
-        string contentType
-        json contentBody
-    }
-
-    AI_SUMMARY_ARTIFACT {
-        string summaryCid PK
-        string resultId FK
-        string provider
-        string model
-        string summaryText
-        string recommendation
-        string confidence
-    }
-
-    PATIENT ||--o{ ACCESS_GRANT : "grants consent to"
-    PATIENT ||--|| EHR_RECORD : "owns"
-    EHR_RECORD ||--o{ CID_HISTORY_ENTRY : "maintains audit log of"
-    PATIENT ||--o{ LAB_RESULT : "has test results"
-    LAB_RESULT ||--|| IPFS_PAYLOAD : "stores off-chain raw data in"
-    LAB_RESULT ||--o| AI_SUMMARY_ARTIFACT : "links agentic analysis in"
-```
-
+- Portal theme state is presentation preference only; authorization is server-side.
+- Dashboard event envelopes reject raw patient identifiers, names, clinical values, and AI narrative. Non-admin event views omit `patientIdHash`.
+- Dashboard role authorization is defined in `dashboard-api/config/authorization.json`, with default deny.
+- The NDJSON store is operational telemetry, not the authoritative audit ledger and not tamper-evident.
+- Digilocker, production FHIR/ABDM conformance, and legal certification are not delivered by this repository state.

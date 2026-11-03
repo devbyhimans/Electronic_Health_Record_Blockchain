@@ -8,7 +8,7 @@
     "build": "vite build"
   },
   "dependencies": {
-    "framer-motion": "^10.15.0",
+    "framer-motion": "^10.18.0",
     "lucide-react": "^0.284.0",
     "react": "^18.2.0",
     "react-dom": "^18.2.0"

@@ -1,33 +1,7 @@
-# Frontend
+# Pharmacy main frontend
 
-Local environment variables:
+React/Vite application served by `p-frontend` on host port `5175` and at `/pharmacy/` through Nginx. It is one of the separately maintained pharmacy interfaces; manager, employee, inventory, and billing are separate apps.
 
-```bash
-VITE_API_BASE_URL=http://localhost:4000
-VITE_IPFS_GATEWAY_URL=http://127.0.0.1:8080/ipfs
-```
+The Vite proxy sends `/api/pharmacy/*` to the pharmacy backend. The UI reports unavailable data rather than presenting local fallback patient records as real. This portal's API availability does not guarantee that the backend can connect to Fabric or IPFS. The backend's legacy profile currently does not match the root `ehrchannel`/MSP topology; ledger-backed actions must remain unavailable until the owning teams complete that integration.
 
-Run:
-
-```bash
-npm run dev -- --host 0.0.0.0 --port 5173
-```
-
-The app will fall back to `http://<current-browser-host>:4000` for the backend if `VITE_API_BASE_URL` is not set.
-
-# React + Vite
-
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
-
-Currently, two official plugins are available:
-
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
-
-## React Compiler
-
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
-
-## Expanding the ESLint configuration
-
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+Use root `./start.sh` for the workspace. For local UI-only development, install dependencies here and run `npm run dev -- --host 0.0.0.0 --port 5175`.

@@ -1,4 +1,5 @@
-# Decentralized EHR System — Multi-System Setup Guide
+# Legacy hospital multi-system setup guide
+> **Current workspace entry point:** use the repository-root [`README.md`](../../../README.md) and `./start.sh` for the supported local stack. This document is a separate multi-host deployment guide retained for reference; its SYS1/SYS2/SYS3 layouts, commands, ports, and expected outputs are not the root Compose topology and must not be treated as proof of the current runtime. Verify every step against the current network files before using it.
 
 > **Hyperledger Fabric 2.5 + IPFS** | 3 Organizations · 5 Peers · 3 Physical Machines
 

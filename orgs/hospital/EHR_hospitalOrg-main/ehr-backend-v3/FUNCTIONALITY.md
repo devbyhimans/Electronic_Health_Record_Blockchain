@@ -1,5 +1,7 @@
 # EHR System — Complete Functionality Reference
 
+> **Reference status:** This document describes backend/chaincode behavior and some historical port assignments. It is not the root Compose port map or a live-deployment report. For current local routes, topology, and limitations use the repository-root [README](../../../../README.md); inspect current source before relying on individual transaction details.
+
 ## System Overview
 
 A blockchain-based Electronic Health Record system built on Hyperledger Fabric 2.5.

@@ -18,6 +18,7 @@ const FALLBACK_PEERS = [
 ];
 
 let toastTimer;
+let livePeerMetadataAvailable = false;
 
 function showToast(message) {
   toast.textContent = message;
@@ -87,7 +88,7 @@ function getStatusStyle(status) {
   return 'background: #e8efec; color: #4b6359; border: 1px solid #c7d6cf;';
 }
 
-function renderRows(records) {
+function renderRows(records, emptyMessage = 'No records found.') {
   recordsBody.style.opacity = '0';
   
   setTimeout(() => {
@@ -95,7 +96,7 @@ function renderRows(records) {
     
     if (!records.length) {
       const row = document.createElement('tr');
-      row.innerHTML = '<td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">No records found.</td>';
+      row.innerHTML = `<td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">${escapeHtml(emptyMessage)}</td>`;
       recordsBody.appendChild(row);
     } else {
       for (const record of records) {
@@ -152,14 +153,16 @@ async function loadMeta() {
 
   try {
     meta = await apiRequest('/api/meta');
+    livePeerMetadataAvailable = true;
   } catch (error) {
+    livePeerMetadataAvailable = false;
     meta = {
       peers: FALLBACK_PEERS,
       defaultPeer: FALLBACK_PEERS[0],
       channel: 'ehrchannel',
       chaincode: 'labresults',
     };
-    showToast(`Meta API unavailable, using fallback peers: ${error.message}`);
+    showToast('Lab ledger is not connected. Fallback records are hidden.');
   }
 
   const peers = Array.isArray(meta.peers) && meta.peers.length > 0
@@ -183,7 +186,16 @@ async function loadMeta() {
 
   const channel = meta.channel || 'ehrchannel';
   const chaincode = meta.chaincode || 'labresults';
-  metaPill.textContent = `${channel} - ${chaincode} - ${peers.length} peer(s)`;
+  metaPill.textContent = livePeerMetadataAvailable
+    ? `${channel} - ${chaincode} - ${peers.length} configured peer(s)`
+    : 'NOT CONNECTED · Fallback data hidden';
+  metaPill.classList.toggle('pill-offline', !livePeerMetadataAvailable);
+  peerSelect.disabled = !livePeerMetadataAvailable;
+  for (const form of [createForm, readForm, resolveDataForm, patientForm, updateStatusForm]) {
+    form.querySelectorAll('input, textarea, select, button').forEach(control => {
+      control.disabled = !livePeerMetadataAvailable;
+    });
+  }
 
   if (meta.ipfs && meta.ipfs.apiUrl) {
     showToast(`IPFS API configured at ${meta.ipfs.apiUrl}`);
@@ -200,6 +212,15 @@ async function loadMeta() {
 }
 
 async function loadAllRecords() {
+  if (!livePeerMetadataAvailable) {
+    renderRows([], 'Live peer metadata is unavailable. No fallback records are displayed.');
+    metaPill.textContent = 'NOT CONNECTED · Fallback data hidden';
+    setOutput('GET /api/records skipped', {
+      status: 'NOT_CONNECTED',
+      detail: 'Live peer metadata is unavailable; fallback records are hidden.',
+    });
+    return;
+  }
   const response = await apiRequest('/api/records');
   const records = normalizeToArray(response.result);
   renderRows(records);
@@ -210,8 +231,9 @@ async function loadAllRecords() {
 refreshBtn.addEventListener('click', async () => {
   toggleLoading(refreshBtn, true);
   try {
+    await loadMeta();
     await loadAllRecords();
-    showToast('Ledger refreshed');
+    showToast(livePeerMetadataAvailable ? 'Ledger refreshed' : 'Ledger is not connected.');
   } catch (error) {
     showToast(error.message);
   } finally {

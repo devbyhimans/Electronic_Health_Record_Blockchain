@@ -6,6 +6,7 @@ import {
   ChevronRight, Menu, X, ShieldCheck
 } from 'lucide-react'
 import { useState } from 'react'
+import ThemeToggle from '../ThemeToggle'
 
 const ROLE_CONFIG = {
   receptionist: {
@@ -132,7 +133,8 @@ export default function Layout({ children }) {
       </nav>
 
       {/* Logout */}
-      <div className="p-4 border-t border-white/10">
+      <div className="p-4 border-t border-white/10 space-y-2">
+        <ThemeToggle />
         <button
           onClick={handleLogout}
           className="flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm text-white/60 hover:text-white hover:bg-white/10 transition-all w-full"

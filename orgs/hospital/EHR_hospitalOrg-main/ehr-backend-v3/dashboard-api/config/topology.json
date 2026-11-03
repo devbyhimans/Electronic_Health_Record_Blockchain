@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "channel": "ehrchannel",
+  "chaincode": "ehr",
+  "organizations": [
+    { "id": "HospitalMSP", "role": "hospital" },
+    { "id": "DiagnosticsMSP", "role": "diagnostics" },
+    { "id": "ProviderMSP", "role": "provider" }
+  ],
+  "orderers": [
+    { "id": "orderer.example.com", "endpointEnv": "DASHBOARD_ORDERER" }
+  ],
+  "peers": [
+    { "id": "peer0.hospital", "mspId": "HospitalMSP", "endpointEnv": "DASHBOARD_PEER_HOSPITAL_RECEPTION" },
+    { "id": "peer1.hospital", "mspId": "HospitalMSP", "endpointEnv": "DASHBOARD_PEER_HOSPITAL_DOCTOR" },
+    { "id": "peer2.hospital", "mspId": "HospitalMSP", "endpointEnv": "DASHBOARD_PEER_HOSPITAL_NURSE" },
+    { "id": "peer0.diagnostic", "mspId": "DiagnosticsMSP", "endpointEnv": "DASHBOARD_PEER_DIAGNOSTICS" },
+    { "id": "peer0.provider", "mspId": "ProviderMSP", "endpointEnv": "DASHBOARD_PEER_PROVIDER" }
+  ],
+  "healthTargets": [
+    { "id": "peer0-operations", "kind": "peer", "org": "HospitalMSP", "peerId": "peer0.hospital", "component": "peer0.hospital", "eventType": "PEER_STATUS_CHANGED", "downEventType": "PEER_DOWN", "urlEnv": "DASHBOARD_HEALTH_PEER0_OPERATIONS_URL" },
+    { "id": "peer1-operations", "kind": "peer", "org": "HospitalMSP", "peerId": "peer1.hospital", "component": "peer1.hospital", "eventType": "PEER_STATUS_CHANGED", "downEventType": "PEER_DOWN", "urlEnv": "DASHBOARD_HEALTH_PEER1_OPERATIONS_URL" },
+    { "id": "peer2-operations", "kind": "peer", "org": "HospitalMSP", "peerId": "peer2.hospital", "component": "peer2.hospital", "eventType": "PEER_STATUS_CHANGED", "downEventType": "PEER_DOWN", "urlEnv": "DASHBOARD_HEALTH_PEER2_OPERATIONS_URL" },
+    { "id": "diagnostics-peer-operations", "kind": "peer", "org": "DiagnosticsMSP", "peerId": "peer0.diagnostic", "component": "peer0.diagnostic", "eventType": "PEER_STATUS_CHANGED", "downEventType": "PEER_DOWN", "urlEnv": "DASHBOARD_HEALTH_DIAGNOSTICS_OPERATIONS_URL" },
+    { "id": "provider-peer-operations", "kind": "peer", "org": "ProviderMSP", "peerId": "peer0.provider", "component": "peer0.provider", "eventType": "PEER_STATUS_CHANGED", "downEventType": "PEER_DOWN", "urlEnv": "DASHBOARD_HEALTH_PROVIDER_OPERATIONS_URL" },
+    { "id": "orderer-operations", "kind": "orderer", "org": "HospitalMSP", "component": "orderer", "eventType": "ORDERER_STATUS_CHANGED", "downEventType": "ORDERER_DOWN", "urlEnv": "DASHBOARD_HEALTH_ORDERER_URL" },
+    { "id": "peer0-api", "kind": "api", "org": "HospitalMSP", "peerId": "peer0.hospital", "component": "peer0-api", "eventType": "API_STATUS_CHANGED", "downEventType": "API_DOWN", "urlEnv": "DASHBOARD_HEALTH_PEER0_API_URL" },
+    { "id": "peer1-api", "kind": "api", "org": "HospitalMSP", "peerId": "peer1.hospital", "component": "peer1-api", "eventType": "API_STATUS_CHANGED", "downEventType": "API_DOWN", "urlEnv": "DASHBOARD_HEALTH_PEER1_API_URL" },
+    { "id": "peer2-api", "kind": "api", "org": "HospitalMSP", "peerId": "peer2.hospital", "component": "peer2-api", "eventType": "API_STATUS_CHANGED", "downEventType": "API_DOWN", "urlEnv": "DASHBOARD_HEALTH_PEER2_API_URL" },
+    { "id": "patient-api", "kind": "api", "org": "HospitalMSP", "component": "patient-api", "eventType": "API_STATUS_CHANGED", "downEventType": "API_DOWN", "urlEnv": "DASHBOARD_HEALTH_PATIENT_API_URL" },
+    { "id": "extorg-api", "kind": "lab", "org": "DiagnosticsMSP", "component": "extorg-api", "agentId": "lab-agent", "eventType": "LAB_STATUS_CHANGED", "downEventType": "LAB_DOWN", "urlEnv": "DASHBOARD_HEALTH_EXTORG_API_URL" },
+    { "id": "ipfs-service", "kind": "ipfs", "org": "HospitalMSP", "component": "ipfs-service", "eventType": "IPFS_STATUS_CHANGED", "downEventType": "IPFS_NODE_DOWN", "urlEnv": "DASHBOARD_HEALTH_IPFS_URL" },
+    { "id": "pharmacy-api", "kind": "pharmacy", "org": "HospitalMSP", "component": "pharmacy-api", "agentId": "pharmacy-agent", "eventType": "PHARMACY_STATUS_CHANGED", "downEventType": "PHARMACY_DOWN", "urlEnv": "DASHBOARD_HEALTH_PHARMACY_URL" }
+  ],
+  "agents": [
+    { "id": "clinical-agent", "kind": "ai", "org": "HospitalMSP", "status": "not_connected", "dependency": "AI" },
+    { "id": "history-agent", "kind": "ai", "org": "HospitalMSP", "status": "not_connected", "dependency": "AI" },
+    { "id": "governance-agent", "kind": "ai", "org": "HospitalMSP", "status": "not_connected", "dependency": "Security" },
+    { "id": "lab-agent", "kind": "ai", "org": "DiagnosticsMSP", "status": "not_connected", "dependency": "AI" },
+    { "id": "nurse-agent", "kind": "logical", "org": "HospitalMSP", "peerId": "peer2.hospital", "status": "not_connected", "dependency": "Hospital API" },
+    { "id": "pharmacy-agent", "kind": "logical", "org": "HospitalMSP", "peerId": "peer2.hospital", "status": "not_connected", "dependency": "Hospital API" }
+  ]
+}

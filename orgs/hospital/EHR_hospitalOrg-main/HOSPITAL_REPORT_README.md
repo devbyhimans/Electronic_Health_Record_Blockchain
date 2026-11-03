@@ -1,4 +1,5 @@
 # HospitalOrg Blockchain EHR System: Technical Analysis & Audit Report
+> **Status:** This is a technical review/proposal document. Its enhancement recommendations and proposed architecture diagram are not implemented merely because they appear here. For the current as-wired local system, see the repository-root [README](../../../README.md) and [architecture](../../../docs/architecture.md).
 
 > **Comprehensive Academic and Technical Audit**
 > *In-depth analysis of the ehr-chaincode-v3, ehr-backend-v3, and ehr-frontend-v2 architectures.*
@@ -23,9 +24,9 @@ The HospitalOrg module serves as the primary medical administration node in the 
 
 ---
 
-## 2. What are your observations
+## 2. Historical observations (revalidation required)
 
-### Current State of Implementation
+### State described by the original review
 *   **Fully Functional:** Fabric network topology orchestration (Orderers, Peers, CouchDB), Smart contract ABAC enforcement, JWT-to-Fabric identity binding, and off-chain CID anchoring.
 *   **Partially Implemented:** The Frontend UI is mocked in certain state transitions. The integration between the React UI and the actual Fabric wallets relies on a coupled REST proxy.
 
@@ -83,31 +84,30 @@ The HospitalOrg module serves as the primary medical administration node in the 
 
 ---
 
-## 5. Proposed architecture based on your novelty
+## 5. Current integration baseline and proposed extensions
 
-### Novel Integration Layer: Privacy-Preserving Event-Driven State Channels
-To solve the data visibility limitations while supercharging the UI experience, the proposed architecture introduces a dual-layer enhancement: **Fabric Private Data Collections (PDC)** integrated seamlessly with **Real-Time WebSockets**. 
+### Proposal status
+The PDC and chaincode-event workflow described below is a future proposal, not the current deployment. The current dashboard derives safe metadata from committed Fabric blocks; the chaincode source has no `stub.setEvent()` call. No PDC is described here as deployed. See the root architecture diagram for the complete current service wiring.
 
-1. Internal staff actions (like draft lab reports or internal doctor notes) are committed exclusively to a collectionHospitalPrivate PDC.
-2. The transaction triggers an immediate stub.setEvent, which the Node.js API Gateway intercepts and broadcasts over an encrypted WebSocket to the React frontend.
-3. The UI updates instantly for authorized staff, while external organizations (like Pharmacies or Insurance) see absolutely nothing until a final, public "Approve" transaction is made to the main ehrchannel.
+A future implementation would require an explicitly designed private-data collection policy, coordinated chaincode deployment, producer authorization, and review of the dashboard zero-PHI event contract. None of those behaviors should be inferred from the proposal.
 
-### Novel System Architecture Diagram
+### As-built local integration diagram
 
 ```mermaid
-flowchart TD
-    Browser[Frontend UI / Doctor Dashboard]
-    Backend[Express Gateway / WebSocket Server]
-    CC[Fabric Smart Contracts]
-    Ledger[Main ehrchannel Ledger]
-    PDC[collectionHospitalPrivate PDC]
-
-    Browser -- 1. Submit Draft Report --> Backend
-    Backend -- 2. gRPC Transaction --> CC
-    CC -- 3. Commit Secure Data --> PDC
-    CC -- 4. Emit Chaincode Event --> Backend
-    Backend -- 5. Push Real-Time UI Alert --> Browser
-    CC -- 6. Future Commit Final Hash --> Ledger
+flowchart TB
+  Browser["Browser"] --> Nginx["Nginx :80 / hub"]
+  Browser --> HospitalUI["Hospital portal :5173"]
+  Nginx --> PatientUI["Patient portal /patient/"]
+  Nginx --> DashUI["Optional dashboard /dashboard/"]
+  Nginx --> LabUI["Lab console /lab/"]
+  Nginx --> PharmacyUI["Separate pharmacy UIs"]
+  HospitalUI --> APIs["Hospital Express APIs :4001–4006"]
+  PatientUI --> APIs
+  APIs --> Fabric[("ehrchannel<br/>HospitalMSP · DiagnosticsMSP · ProviderMSP")]
+  APIs --> IPFS["IPFS bridge → Kubo"]
+  Fabric -. "committed block metadata; observer identity required" .-> DashAPI["Read-only dashboard API"]
+  Producers["AI / FHIR / Security / gateway emitters"] -. "not connected by default" .-> DashAPI
+  PharmacyUI -. "legacy profile; not connected to root Fabric by default" .-> Fabric
 ```
 
 ---

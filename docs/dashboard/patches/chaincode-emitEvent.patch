@@ -1,0 +1,46 @@
+diff --git a/orgs/hospital/EHR_hospitalOrg-main/ehr-chaincode-v3/lib/dashboardEvents.js b/orgs/hospital/EHR_hospitalOrg-main/ehr-chaincode-v3/lib/dashboardEvents.js
+new file mode 100644
+--- /dev/null
++++ b/orgs/hospital/EHR_hospitalOrg-main/ehr-chaincode-v3/lib/dashboardEvents.js
+@@ -0,0 +1,41 @@
++'use strict';
++
++// DRAFT ONLY for Blockchain/Security review; not applied by Group 1.
++// Emit compact metadata only. Never pass patient IDs, clinical values,
++// transaction arguments, record bodies, or AI narrative text.
++const EVENT_FIELDS = Object.freeze({
++  CONSENT_GRANTED: ['status', 'reasonCode'],
++  CONSENT_REVOKED: ['status', 'reasonCode'],
++  FHIR_CONVERSION_COMPLETED: ['status', 'reasonCode', 'recordHash'],
++  VCAP_ANCHORED: ['status', 'reasonCode', 'recordHash'],
++});
++const SAFE_VALUE = /^[A-Za-z0-9][A-Za-z0-9_.:-]{0,127}$/;
++const SAFE_HASH = /^[a-f0-9]{64}$/i;
++
++function emitEvent(ctx, eventType, details = {}) {
++  const allowedFields = EVENT_FIELDS[eventType];
++  if (!allowedFields) throw new Error('Dashboard event type is not allow-listed');
++  if (!details || typeof details !== 'object' || Array.isArray(details)) {
++    throw new Error('Dashboard event metadata must be an object');
++  }
++  const metadata = {};
++  for (const [field, value] of Object.entries(details)) {
++    if (!allowedFields.includes(field) || typeof value !== 'string') {
++      throw new Error('Dashboard event metadata contains an unsupported field');
++    }
++    if (field === 'recordHash' ? !SAFE_HASH.test(value) : !SAFE_VALUE.test(value)) {
++      throw new Error('Dashboard event metadata contains an unsafe value');
++    }
++    metadata[field] = value;
++  }
++  const encoded = Buffer.from(JSON.stringify({
++    schemaVersion: 1,
++    txId: ctx.stub.getTxID(),
++    eventType,
++    metadata,
++  }));
++  if (encoded.length > 1024) throw new Error('Dashboard event exceeds the size limit');
++  ctx.stub.setEvent(eventType, encoded);
++}
++
++module.exports = { emitEvent };

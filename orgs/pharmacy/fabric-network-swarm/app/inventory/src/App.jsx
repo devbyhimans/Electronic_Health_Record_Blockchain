@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Package, Activity, Search, RefreshCw, Plus, Minus, AlertTriangle, ShieldCheck, User, Pill, ArrowRight, ExternalLink, Database, TrendingDown, ClipboardList } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import './styles.css';
+import ThemeToggle from './ThemeToggle.jsx';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || '/api/pharmacy';
 
@@ -16,6 +17,7 @@ export default function App() {
   const [activeTab, setActiveTab] = useState('stock');
   const [items, setItems] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState(false);
   const [currentUser, setCurrentUser] = useState('inventory_mgr_01');
   const [toast, setToast] = useState(null);
 
@@ -32,9 +34,12 @@ export default function App() {
     try {
       const data = await api(`/api/inventory?user=${currentUser}`);
       setItems(Array.isArray(data) ? data : []);
+      setLoadError(false);
     } catch (e) {
       console.error(e);
-      showToast('Failed to load inventory: ' + e.message, 'error');
+      setItems([]);
+      setLoadError(true);
+      showToast('Pharmacy ledger unavailable. Inventory writes are disabled.', 'error');
     } finally {
       setLoading(false);
     }
@@ -93,6 +98,7 @@ export default function App() {
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
           </button>
         </div>
+              <ThemeToggle />
       </nav>
 
       <main className="app-container">
@@ -111,9 +117,11 @@ export default function App() {
                   
                   <div style={{ marginTop: '2.5rem' }}>
                     {items.length === 0 ? (
-                      <div style={{ textAlign: 'center', padding: '4rem', opacity: 0.4 }}>
+                      <div role="status" style={{ textAlign: 'center', padding: '3rem 1rem', color: 'var(--text-secondary)' }}>
                         <Database size={48} style={{ margin: '0 auto 1.5rem' }} />
-                        <p>No inventory records found on the ledger.</p>
+                        <p>{loadError
+                          ? 'Inventory service unavailable. No sample stock is displayed.'
+                          : 'No inventory records were returned by the connected service.'}</p>
                       </div>
                     ) : (
                       <table>
@@ -146,8 +154,10 @@ export default function App() {
                   <h3><TrendingDown size={20} color="#ef4444" /> Low Stock Alerts</h3>
                   <div style={{ marginTop: '1.5rem', display: 'flex', flexDirection: 'column', gap: '0.75rem' }}>
                     {lowStockItems.length === 0 ? (
-                      <div style={{ padding: '1rem', textAlign: 'center', opacity: 0.5, fontSize: '0.85rem' }}>
-                        All stock levels are optimal.
+                      <div role="status" style={{ padding: '1rem', textAlign: 'center', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+                        {loadError || items.length === 0
+                          ? 'Stock status unavailable until live inventory data is returned.'
+                          : 'No low-stock items were reported.'}
                       </div>
                     ) : (
                       lowStockItems.map((item, i) => (
@@ -199,7 +209,7 @@ export default function App() {
                       <option value="patches">Patches</option>
                     </select>
 
-                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }}>
+                    <button type="submit" className="btn btn-primary" style={{ width: '100%', marginTop: '1rem' }} disabled={loadError}>
                       <ShieldCheck size={18} /> Update Stock Ledger
                     </button>
                   </form>

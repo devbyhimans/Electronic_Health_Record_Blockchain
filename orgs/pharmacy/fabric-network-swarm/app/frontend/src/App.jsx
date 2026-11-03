@@ -1,12 +1,33 @@
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import './index.css'
 import Dashboard from './Dashboard'
 import CreateRecord from './CreateRecord'
 import { ShieldCheck, User, LogOut, Pill } from 'lucide-react'
+import ThemeToggle from './ThemeToggle'
+import { API_BASE_URL } from './config'
 
 function App() {
   const [view, setView] = useState('dashboard');
   const [currentUser, setCurrentUser] = useState('user1');
+  const [serviceStatus, setServiceStatus] = useState({ fabric: 'Checking', ipfs: 'Checking' });
+
+  useEffect(() => {
+    const controller = new AbortController();
+    fetch(`${API_BASE_URL}/api/network-status`, { cache: 'no-store', signal: controller.signal })
+      .then(async response => {
+        if (!response.ok) throw new Error('Health endpoint unavailable');
+        return response.json();
+      })
+      .then(result => {
+        const heights = Object.values(result.nodes || {});
+        setServiceStatus({
+          fabric: heights.some(height => typeof height === 'number') ? 'Responding' : 'Unavailable',
+          ipfs: result.ipfs === 'UP' ? 'Responding' : 'Unavailable',
+        });
+      })
+      .catch(() => setServiceStatus({ fabric: 'Unavailable', ipfs: 'Unavailable' }));
+    return () => controller.abort();
+  }, []);
 
   return (
     <div className="app">
@@ -31,6 +52,7 @@ function App() {
            
            <span style={{ fontSize: '0.9rem', color: '#94a3b8', cursor: 'pointer' }} onClick={() => setView('dashboard')}>Dashboard</span>
            <LogOut size={20} color="#94a3b8" style={{ cursor: 'pointer' }} />
+           <ThemeToggle />
         </div>
       </nav>
 
@@ -48,9 +70,9 @@ function App() {
 
       <footer style={{ textAlign: 'center', padding: '4rem', color: '#64748b', fontSize: '0.8rem' }}>
         <div style={{ display: 'flex', justifyContent: 'center', gap: '2rem', marginBottom: '1rem' }}>
-          <span>Blockchain: <span style={{ color: '#10b981' }}>Connected</span></span>
-          <span>IPFS: <span style={{ color: '#10b981' }}>Connected</span></span>
-          <span>Org: <span style={{ color: '#10b981' }}>Pharmacy</span></span>
+          <span>Fabric health: <span>{serviceStatus.fabric}</span></span>
+          <span>IPFS health: <span>{serviceStatus.ipfs}</span></span>
+          <span>Organization: Pharmacy</span>
         </div>
         <p>© 2026 Decentralized Pharmacy Ledger Systems</p>
       </footer>

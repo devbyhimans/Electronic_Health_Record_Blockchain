@@ -1,0 +1,88 @@
+{
+  "version": 1,
+  "default": "deny",
+  "externalTokenRoles": [
+    "labtechnician", "labsupervisor", "labadmin", "labreceptionist", "radiologist",
+    "insuranceofficer", "claimsauditor", "billingofficer", "provideradmin"
+  ],
+  "externalSecretIndex": 1,
+  "patientReferenceField": "patientIdHash",
+  "adminPages": [
+    "overview",
+    "network",
+    "agents",
+    "transactions",
+    "security",
+    "ipfs",
+    "logs",
+    "alerts",
+    "traces"
+  ],
+  "roles": {
+    "admin": {
+      "isAdmin": true,
+      "pages": ["*"],
+      "agentIds": ["*"],
+      "peerIds": ["*"],
+      "orgs": ["*"],
+      "showPatientIdHash": true,
+      "requireAgentForSharedPeerEvents": false
+    },
+    "doctor": {
+      "pages": ["agent", "traces"],
+      "agentIds": ["clinical-agent", "history-agent", "governance-agent"],
+      "peerIds": ["peer1.hospital"],
+      "orgs": ["HospitalMSP"],
+      "showPatientIdHash": false,
+      "requireAgentForSharedPeerEvents": false
+    },
+    "nurse": {
+      "pages": ["agent"],
+      "agentIds": [],
+      "peerIds": ["peer2.hospital"],
+      "orgs": ["HospitalMSP"],
+      "showPatientIdHash": false,
+      "requireAgentForSharedPeerEvents": true
+    },
+    "pharmacist": {
+      "pages": ["agent"],
+      "agentIds": ["pharmacy-agent"],
+      "peerIds": ["peer2.hospital"],
+      "orgs": ["HospitalMSP"],
+      "showPatientIdHash": false,
+      "requireAgentForSharedPeerEvents": true
+    },
+    "labtechnician": {
+      "pages": ["agent"],
+      "agentIds": ["lab-agent"],
+      "peerIds": ["peer0.diagnostic"],
+      "orgs": ["DiagnosticsMSP"],
+      "showPatientIdHash": false,
+      "requireAgentForSharedPeerEvents": false
+    },
+    "labsupervisor": {
+      "pages": ["agent"],
+      "agentIds": ["lab-agent"],
+      "peerIds": ["peer0.diagnostic"],
+      "orgs": ["DiagnosticsMSP"],
+      "showPatientIdHash": false,
+      "requireAgentForSharedPeerEvents": false
+    },
+    "labadmin": {
+      "pages": ["agent"],
+      "agentIds": ["lab-agent"],
+      "peerIds": ["peer0.diagnostic"],
+      "orgs": ["DiagnosticsMSP"],
+      "showPatientIdHash": false,
+      "requireAgentForSharedPeerEvents": false
+    },
+    "radiologist": {
+      "pages": ["agent"],
+      "agentIds": ["lab-agent"],
+      "peerIds": ["peer0.diagnostic"],
+      "orgs": ["DiagnosticsMSP"],
+      "showPatientIdHash": false,
+      "requireAgentForSharedPeerEvents": false
+    }
+  }
+}

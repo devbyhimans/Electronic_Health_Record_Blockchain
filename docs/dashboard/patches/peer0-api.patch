@@ -1,0 +1,14 @@
+--- a/orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/peer0-api/src/app.js
++++ b/orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/peer0-api/src/app.js
+@@ -15,0 +16 @@
++const { emitDashboardEvent } = require('./observability/dashboardEmitter');
+@@ -27,0 +29,9 @@
++app.use((req, res, next) => {
++  res.once('finish', () => {
++    if (req.path === '/health') return;
++    if (res.statusCode === 401 || res.statusCode === 403) emitDashboardEvent({ status: 'DENIED', reasonCode: `HTTP_${res.statusCode}` });
++    else if (res.statusCode >= 500) emitDashboardEvent({ status: 'FAILED', reasonCode: `HTTP_${res.statusCode}` });
++    else if (req.method === 'GET' && res.statusCode < 400) emitDashboardEvent({ status: 'EVALUATED', reasonCode: 'READ_QUERY_COMPLETED' });
++  });
++  next();
++});

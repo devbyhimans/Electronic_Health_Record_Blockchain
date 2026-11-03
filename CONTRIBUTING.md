@@ -1,37 +1,23 @@
-# Contributing to the EHR Blockchain System
+# Contributing to the EHR Blockchain workspace
 
-We welcome contributions! This project uses a standard Git workflow. Please follow these guidelines to keep the codebase clean and maintainable.
+The repository contains independently owned services. Keep changes scoped, preserve other contributors' work, and coordinate before changing shared Fabric, gateway, deployment, or cross-team interfaces.
 
-## Branch Naming Convention
+## Branches and commits
 
-Always create a branch from `develop` for your work. Name your branch according to the organization or module you are working on, followed by a short description:
+Use the branch naming convention agreed by the team. For Group 1 work, the active branch is `himanshu/group1-realtime-events`. Do not commit directly to `main`. Use descriptive commit subjects and include a body when a commit spans several modules. Push only the explicitly named branch.
 
-`<org>-<short-desc>`
+## Before changing interfaces
 
-**Examples:**
-- `hospital-fix-registration`
-- `pharmacy-add-inventory-ui`
-- `digilocker-chaincode-init`
+- Read the relevant module README and the root [current implementation guide](README.md).
+- Treat the root Compose/Nginx entry points and `./start.sh` as the local integration path. Standalone Swarm/multi-host scripts may describe other deployments.
+- Do not edit another team's API, chaincode, security, FHIR, AI, pharmacy, or lab implementation without coordinating with its owner.
+- Keep incomplete integrations visibly unavailable. Do not show synthetic or fallback data as live service data.
+- For dashboard events, preserve the zero-PHI validator and server-side role filtering. Do not add patient names, raw IDs, clinical values, or AI narrative.
 
-## Pull Request Process
+## Secrets and data
 
-1. **Fork the Repository:** Create your own fork of this repository to your personal or group GitHub account.
-2. **Branch from `develop`:** Make sure your `develop` branch is up to date, then create your feature branch from it.
-3. **Commit your changes:** Keep commits focused and provide clear commit messages.
-4. **Push and create a PR:** Push your branch to your fork and create a Pull Request targeting the `develop` branch of the main repository.
-5. **Review:** At least 1 review is required before merging. Do not merge your own PR without a review from a peer.
+Use synthetic test data locally. Never commit `.env` files, JWT/service keys, wallet contents, TLS private keys, or patient data. Do not paste secrets into issues, reviews, or chat. Do not make Docker's socket world-writable.
 
-## Local Setup
+## Local setup
 
-The repository has been restructured so that each organization can be run locally in a single-machine mode. 
-
-### Setting up Environment Variables
-
-Before running any scripts, you must set up your local `.env` files based on the provided templates:
-1. Copy `orgs/pharmacy/fabric-network-swarm/deploy.env.example` to `deploy.env` and update it if necessary.
-2. Copy `orgs/lab/EHR-LABORG-main/env/network.env.example` to `network.env` and add your Gemini API key and any other local configuration.
-3. (Do this for any other `.env.example` files you encounter).
-
-**Important:** Never commit a real key or secret to the repository!
-
-For detailed startup instructions for each organization, see `docs/setup-guide.md` (coming soon).
+Use the repository-root `./start.sh` after Docker and existing Fabric identity/CA state are ready. Use `./stop.sh` to stop containers while preserving volumes. See [`docs/setup-guide.md`](docs/setup-guide.md) for the current root workflow and [`orgs/hospital/EHR_hospitalOrg-main/README.md`](orgs/hospital/EHR_hospitalOrg-main/README.md) for the separately retained legacy multi-system guide.

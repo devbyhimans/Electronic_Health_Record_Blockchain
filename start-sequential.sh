@@ -23,14 +23,19 @@ SERVICES["patient-api"]="orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/patie
 # Hospital Frontends
 SERVICES["hospital-portal"]="orgs/hospital/EHR_hospitalOrg-main/ehr-frontend-v2/hospital-portal:npx vite --host 0.0.0.0 --port 5173:5173"
 SERVICES["patient-portal"]="orgs/hospital/EHR_hospitalOrg-main/ehr-frontend-v2/patient-portal:npx vite --host 0.0.0.0 --port 5174:5174"
+if [[ "${ENABLE_DASHBOARD:-false}" == "true" ]]; then
+    SERVICES["dashboard-portal"]="orgs/hospital/EHR_hospitalOrg-main/ehr-frontend-v2/dashboard-portal:npx vite --host 0.0.0.0 --port 5176:5176"
+    SERVICES["dashboard-api"]="orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/dashboard-api:npm start:4010"
+fi
 
 # Pharmacy Apps
-SERVICES["pharmacy-manager"]="orgs/pharmacy/fabric-network-swarm/app/manager:npm run dev -- --host 0.0.0.0 --port 3001:3001"
-SERVICES["pharmacy-employee"]="orgs/pharmacy/fabric-network-swarm/app/employee:npm run dev -- --host 0.0.0.0 --port 3002:3002"
-SERVICES["pharmacy-inventory"]="orgs/pharmacy/fabric-network-swarm/app/inventory:npm run dev -- --host 0.0.0.0 --port 3003:3003"
-SERVICES["pharmacy-patient"]="orgs/pharmacy/fabric-network-swarm/app/patient:npm run dev -- --host 0.0.0.0 --port 3004:3004"
-SERVICES["pharmacy-billing"]="orgs/pharmacy/fabric-network-swarm/app/billing:npm run dev -- --host 0.0.0.0 --port 3005:3005"
-SERVICES["pharmacy-frontend"]="orgs/pharmacy/fabric-network-swarm/app/frontend:npm run dev -- --host 0.0.0.0 --port 5175:5175"
+SERVICES["pharmacy-backend"]="orgs/pharmacy/fabric-network-swarm/app/backend:node app.js:3000"
+SERVICES["pharmacy-manager"]="orgs/pharmacy/fabric-network-swarm/app/manager:npx vite --host 0.0.0.0 --port 3001:3001"
+SERVICES["pharmacy-employee"]="orgs/pharmacy/fabric-network-swarm/app/employee:npx vite --host 0.0.0.0 --port 3002:3002"
+SERVICES["pharmacy-inventory"]="orgs/pharmacy/fabric-network-swarm/app/inventory:npx vite --host 0.0.0.0 --port 3003:3003"
+SERVICES["pharmacy-patient"]="orgs/pharmacy/fabric-network-swarm/app/patient:npx vite --host 0.0.0.0 --port 3004:3004"
+SERVICES["pharmacy-billing"]="orgs/pharmacy/fabric-network-swarm/app/billing:npx vite --host 0.0.0.0 --port 3005:3005"
+SERVICES["pharmacy-frontend"]="orgs/pharmacy/fabric-network-swarm/app/frontend:npx vite --host 0.0.0.0 --port 5175:5175"
 
 # Lab
 SERVICES["lab-gateway"]="orgs/lab/EHR-LABORG-main/client/node-gateway:env PORT=8080 node server.js:8080"
@@ -44,7 +49,11 @@ install_all() {
         target_dir="${ROOT_DIR}/${rel_dir}"
         if [ -d "${target_dir}" ]; then
             echo "[*] Installing in ${rel_dir}..."
-            (cd "${target_dir}" && rm -f package-lock.json && npm install)
+            if [[ "${name}" == "dashboard-api" || "${name}" == "dashboard-portal" ]]; then
+                (cd "${target_dir}" && npm ci)
+            else
+                (cd "${target_dir}" && rm -f package-lock.json && npm install)
+            fi
         else
             echo "[!] Skipping ${rel_dir} (directory not found)"
         fi
@@ -95,7 +104,11 @@ stop_all() {
     done
 
     # Terminate any remaining processes on project ports (handles orphaned child processes)
-    for port in 4001 4002 4003 4004 4005 4006 5173 5174 5175 8080; do
+    ports=(3000 3001 3002 3003 3004 3005 4001 4002 4003 4004 4005 4006 5173 5174 5175 8080)
+    if [[ "${ENABLE_DASHBOARD:-false}" == "true" ]]; then
+        ports+=(4010 5176)
+    fi
+    for port in "${ports[@]}"; do
         pids=$(lsof -ti :${port} 2>/dev/null || true)
         if [ -n "${pids}" ]; then
             echo "[-] Freeing port :${port} (PIDs: ${pids})..."
