@@ -96,7 +96,10 @@ echo -e "  ${GREEN}✓ Core hospital backends, IPFS, and web portals initialized
 
 if [[ -f "${ROOT_DIR}/orgs/hospital/EHR_hospitalOrg-main/ehr-backend-v3/dashboard-api/.env" ]]; then
   echo -e "\n${BOLD}${BLUE}[4/6] 📊 Starting the realtime blockchain dashboard...${RESET}"
-  docker compose -f "${APP_COMPOSE}" --profile dashboard up -d ${BUILD_FLAG} h-dashboard-api h-dashboard-portal
+  if ! docker compose -f "${APP_COMPOSE}" --profile dashboard up -d ${BUILD_FLAG} h-dashboard-api h-dashboard-portal 2>/dev/null; then
+    docker rm -f ehr_blockchain-h-dashboard-api-1 ehr_blockchain-h-dashboard-portal-1 >/dev/null 2>&1 || true
+    docker compose -f "${APP_COMPOSE}" --profile dashboard up -d ${BUILD_FLAG} h-dashboard-api h-dashboard-portal
+  fi
   echo -e "  ${GREEN}✓ Dashboard API & Realtime Portal active${RESET}"
 else
   echo -e "\n${BOLD}${BLUE}[4/6] 📊 Realtime dashboard skipped (configure dashboard-api/.env to enable)${RESET}"
