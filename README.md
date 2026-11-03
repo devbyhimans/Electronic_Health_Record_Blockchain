@@ -56,7 +56,7 @@ flowchart TB
   LabUI --> LabGateway["Lab node-gateway :3006 host"]
   PharmUI --> PharmAPI["p-backend :3000"]
 
-  P0 --> Fabric[("Fabric ehrchannel<br/>HospitalMSP"])
+  P0 --> Fabric[("Fabric ehrchannel<br/>HospitalMSP")]
   P1 --> Fabric
   P2 --> Fabric
   PatientAPI --> Fabric
