@@ -22,7 +22,7 @@ set_peer_context peer0
 
 peer0_tls="${ROOT_DIR}/organizations/peerOrganizations/${LAB_ORG_DOMAIN}/peers/${PEER0_HOST}/tls/ca.crt"
 orderer_ca="$(orderer_ca_file)"
-payload="$(jq -cn --arg fn "${function_name}" --args "$@" '{function: $fn, Args: $ARGS.positional}')"
+payload="$(jq -cn --arg fn "${function_name}" '{function: $fn, Args: $ARGS.positional}' --args "$@")"
 
 peer chaincode invoke \
   -o "${ORDERER_HOST}:${ORDERER_PORT}" \
