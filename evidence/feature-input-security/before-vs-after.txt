@@ -1,0 +1,72 @@
+==============================================================================
+BEFORE VS AFTER COMPARISON REPORT
+Feature: Input Sanitization, Output Encoding, and File-Upload Sandboxing
+Timestamp: 2026-11-19T00:58:00Z
+==============================================================================
+
+1. PAYLOAD: <script>alert(1)</script>
+   - BEFORE (Original Code):
+     HTTP Response: 200 OK / 201 Created (Accepted by Express body parser)
+     Result: Vulnerable to Stored / Reflected XSS when echoed or rendered in UI.
+   - AFTER (With Sanitize Middleware):
+     HTTP Response: 400 Bad Request
+     Payload: {"error":"INPUT_REJECTED","field":"body.input","reason":"XSS: script tag detected"}
+     Result: BLOCKED before reaching route logic.
+
+2. PAYLOAD: <img src=x onerror=alert(1)>
+   - BEFORE (Original Code):
+     HTTP Response: 200 OK / 201 Created (Accepted without inspection)
+     Result: Vulnerable to event-handler XSS injection.
+   - AFTER (With Sanitize Middleware):
+     HTTP Response: 400 Bad Request
+     Payload: {"error":"INPUT_REJECTED","field":"body.input","reason":"XSS: event handler attribute detected"}
+     Result: BLOCKED before reaching route logic.
+
+3. PAYLOAD: ' OR 1=1 --
+   - BEFORE (Original Code):
+     HTTP Response: 200 OK / 201 Created (Accepted without inspection)
+     Result: SQL tautology/comment injection passed downstream.
+   - AFTER (With Sanitize Middleware):
+     HTTP Response: 400 Bad Request
+     Payload: {"error":"INPUT_REJECTED","field":"body.input","reason":"SQL Injection: Tautology condition detected"}
+     Result: BLOCKED before reaching route logic.
+
+4. PAYLOAD: {"$ne": null}
+   - BEFORE (Original Code):
+     HTTP Response: 200 OK / 201 Created (Accepted object with dollar key)
+     Result: NoSQL query selector injection passed downstream.
+   - AFTER (With Sanitize Middleware):
+     HTTP Response: 400 Bad Request
+     Payload: {"error":"INPUT_REJECTED","field":"body.$ne","reason":"NoSQL Injection: operator key detected"}
+     Result: BLOCKED before reaching route logic.
+
+5. PAYLOAD: ../../etc/passwd
+   - BEFORE (Original Code):
+     HTTP Response: 200 OK / 201 Created (Accepted traversal path)
+     Result: Directory traversal sequence passed to filesystem/storage paths.
+   - AFTER (With Sanitize Middleware):
+     HTTP Response: 400 Bad Request
+     Payload: {"error":"INPUT_REJECTED","field":"body.input","reason":"Path Traversal: directory traversal sequence (../ or ..\\) detected"}
+     Result: BLOCKED before reaching route logic.
+
+6. FILE PAYLOAD: disguised_malware.pdf (Windows PE / MZ magic bytes: 0x4D 0x5A)
+   - BEFORE (Original Code):
+     MIME check checked only Content-Type header 'application/pdf'.
+     Accepted disguised executable and sent to IPFS & pdf-parse OCR extractor.
+   - AFTER (With Upload Sandbox):
+     HTTP Response: 415 Unsupported Media Type
+     Payload: {"error":"UNSUPPORTED_MEDIA_TYPE","reason":"Invalid file signature or magic bytes mismatch with declared format"}
+     Result: BLOCKED before IPFS or OCR execution.
+
+7. FILE PAYLOAD: oversized_record.pdf (> 10 MB)
+   - BEFORE (Original Code):
+     Multer had no file rejection formatting or permitted large buffers.
+   - AFTER (With Upload Sandbox):
+     HTTP Response: 413 Payload Too Large
+     Payload: {"error":"FILE_TOO_LARGE","reason":"File size exceeds 10 MB limit"}
+     Result: BLOCKED before IPFS or storage processing.
+
+8. BENIGN PAYLOAD: Safe patient record & valid PDF
+   - BEFORE: Accepted
+   - AFTER: Accepted (HTTP 200 OK) with randomized server-side UUID filename.
+==============================================================================

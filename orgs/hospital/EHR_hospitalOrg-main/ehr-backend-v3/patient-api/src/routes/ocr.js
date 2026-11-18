@@ -6,6 +6,7 @@ const Tesseract = require('tesseract.js');
 const { authenticate } = require('../middleware/auth');
 const { fabricContext } = require('../middleware/fabricContext');
 const { uploadFile } = require('../fabric/ipfsClient');
+const { uploadSandbox } = require('../middleware/uploadSandbox');
 const { wrap } = require('../middleware/errorHandler');
 const logger = require('../config/logger');
 
@@ -63,6 +64,7 @@ router.post('/',
   authenticate,
   fabricContext,
   upload.single('file'),
+  uploadSandbox,
   wrap(async (req, res) => {
     if (!req.file) {
       return res.status(400).json({ success: false, error: 'File is required' });

@@ -1,0 +1,23 @@
+==============================================================================
+ INPUT SANITIZATION & FILE-UPLOAD SANDBOXING TEST SUITE
+ Timestamp : 2026-11-18T19:27:05Z
+ Target URL: http://localhost:3099
+ Log file  : /home/kryshhzz/Desktop/Electronic_Health_Record_Blockchain/evidence/feature-input-security/test-run-20261119_005705.log
+==============================================================================
+
+ID   | Test Case                    | Target     | Expect | Got    | Status
+-----+------------------------------+------------+--------+--------+-------
+T1   | XSS script tag               | POST /text | 400    | 400    | PASS  
+T2   | Event handler attribute      | POST /text | 400    | 400    | PASS  
+T3   | SQL injection string         | POST /text | 400    | 400    | PASS  
+T4   | NoSQL operator key           | POST /text | 400    | 400    | PASS  
+T5   | Path traversal (../)         | POST /text | 400    | 400    | PASS  
+T6   | Real .pdf file               | POST /upload | 200    | 200    | PASS  
+T7   | Fake .pdf (MZ header)        | POST /upload | 415    | 415    | PASS  
+T8   | Oversized file (>10MB)       | POST /upload | 413    | 413    | PASS  
+T9   | Safe clinical input          | POST /text | 200    | 200    | PASS  
+
+==============================================================================
+ TEST SUMMARY: Total: 9 | Passed: 9 | Failed: 0
+==============================================================================
+>>> ALL SECURITY VERIFICATION TESTS PASSED SUCCESSFULLY! <<<

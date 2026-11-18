@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Security Test Panel (demo only)</title>
+    <link rel="stylesheet" href="./styles.css" />
+    <style>
+      .badge-accepted { background: #1b4d3e; color: #a3e635; padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 700; display: inline-block; }
+      .badge-rejected { background: #4c1d1d; color: #f87171; padding: 0.25rem 0.75rem; border-radius: 9999px; font-weight: 700; display: inline-block; }
+      .preset-grid { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-bottom: 1rem; }
+      .preset-btn { background: #1e293b; color: #cbd5e1; border: 1px solid #334155; padding: 0.35rem 0.75rem; border-radius: 6px; font-size: 0.85rem; cursor: pointer; }
+      .preset-btn:hover { background: #334155; }
+      .result-box { background: #0f172a; border: 1px solid #1e293b; border-radius: 8px; padding: 1.25rem; margin-top: 1.5rem; }
+      .result-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 0.75rem; }
+      pre { background: #020617; padding: 1rem; border-radius: 6px; overflow-x: auto; font-family: monospace; font-size: 0.85rem; color: #e2e8f0; }
+    </style>
+  </head>
+  <body>
+    <main class="shell" style="max-width: 900px; margin: 2rem auto; padding: 0 1rem;">
+      <header class="hero">
+        <p class="eyebrow">Input Sanitization &amp; Upload Sandboxing</p>
+        <h1>Security Test Panel (demo only)</h1>
+        <p class="subtitle">
+          Interactive testbed for verifying XSS prevention, injection defense, directory traversal mitigation, and magic-byte file sandboxing.
+        </p>
+        <div style="margin-top: 1rem;">
+          <a href="/lab/" class="btn btn-secondary" style="text-decoration: none;">&larr; Back to Lab Deck</a>
+        </div>
+      </header>
+
+      <section class="panel" style="margin-top: 1.5rem;">
+        <h2>1. Text &amp; Injection Payload Testing</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+          Select a preset payload or enter custom text to test global input sanitization:
+        </p>
+
+        <div class="preset-grid">
+          <button type="button" class="preset-btn" data-payload="<script>alert(1)</script>">&lt;script&gt;alert(1)&lt;/script&gt;</button>
+          <button type="button" class="preset-btn" data-payload="<img src=x onerror=alert(1)>">&lt;img src=x onerror=alert(1)&gt;</button>
+          <button type="button" class="preset-btn" data-payload="' OR 1=1 --">' OR 1=1 --</button>
+          <button type="button" class="preset-btn" data-payload='{"$ne": null}'>{"$ne": null}</button>
+          <button type="button" class="preset-btn" data-payload="../../etc/passwd">../../etc/passwd</button>
+          <button type="button" class="preset-btn" data-payload="Patient John Doe, Normal Glucose: 95 mg/dL">Safe Clinical Record</button>
+        </div>
+
+        <form id="textTestForm">
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Payload Content</label>
+          <textarea id="payloadInput" rows="3" style="width: 100%; padding: 0.75rem; border-radius: 6px; background: #0f172a; border: 1px solid #334155; color: #fff; font-family: monospace;" required></textarea>
+          <div style="margin-top: 0.75rem;">
+            <button type="submit" class="btn btn-primary" id="submitTextBtn">Submit Text</button>
+          </div>
+        </form>
+      </section>
+
+      <section class="panel" style="margin-top: 1.5rem;">
+        <h2>2. File Upload Sandboxing Testing</h2>
+        <p style="color: var(--text-muted); font-size: 0.9rem; margin-bottom: 1rem;">
+          Upload a file to test the 10 MB limit, extension allowlist (.pdf, .png, .jpg), and magic-byte verification (e.g. .exe disguised as .pdf):
+        </p>
+
+        <form id="fileTestForm">
+          <label style="display: block; margin-bottom: 0.5rem; font-weight: 600;">Choose File</label>
+          <input type="file" id="fileInput" accept=".pdf,.png,.jpg,.jpeg" style="display: block; margin-bottom: 1rem;" required />
+          <button type="submit" class="btn btn-primary" id="submitFileBtn">Upload File</button>
+        </form>
+      </section>
+
+      <section class="result-box" id="resultContainer" style="display: none;">
+        <div class="result-header">
+          <div id="statusBadge"></div>
+          <div id="statusCode" style="font-family: monospace; font-weight: 700; color: #94a3b8;"></div>
+        </div>
+        <div>
+          <strong id="reasonText" style="display: block; margin-bottom: 0.5rem;"></strong>
+          <pre id="rawResult">Waiting...</pre>
+        </div>
+      </section>
+    </main>
+
+    <script src="./security-test.js" defer></script>
+  </body>
+</html>

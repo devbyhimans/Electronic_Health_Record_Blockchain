@@ -3,7 +3,10 @@
 const path = require('path');
 const express = require('express');
 const multer = require('multer');
+const helmet = require('helmet');
 const { loadGatewayEnvironment } = require('./runtime-env');
+const { sanitize } = require('./middleware/sanitize');
+const { uploadSandbox, handleMulterError } = require('./middleware/uploadSandbox');
 
 loadGatewayEnvironment();
 
@@ -32,6 +35,25 @@ const {
 } = require('./ipfs');
 
 const app = express();
+
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", 'data:', 'blob:'],
+        connectSrc: ["'self'"],
+        fontSrc: ["'self'"],
+        objectSrc: ["'none'"],
+        baseUri: ["'self'"],
+        formAction: ["'self'"],
+      },
+    },
+    noSniff: true,
+  })
+);
 const PORT = Number(process.env.PORT || 3000);
 const BIND_HOST = process.env.GATEWAY_BIND_HOST || '0.0.0.0';
 const WEB_ROOT = path.join(__dirname, 'public');
@@ -56,6 +78,7 @@ function resolveAdvertisedHost() {
 }
 
 app.use(express.json({ limit: '1mb' }));
+app.use(sanitize);
 app.use(express.static(WEB_ROOT));
 
 function selectedPeer(req) {
@@ -301,7 +324,12 @@ app.post('/api/records', async (req, res, next) => {
   }
 });
 
-app.post('/api/records/ipfs', uploadReportFile.single('reportFile'), async (req, res, next) => {
+app.post(
+  '/api/records/ipfs',
+  uploadReportFile.single('reportFile'),
+  handleMulterError,
+  uploadSandbox,
+  async (req, res, next) => {
   try {
     const hasResultData = Object.prototype.hasOwnProperty.call(req.body || {}, 'resultData')
       && trimmedField(req.body.resultData).length > 0;
@@ -520,6 +548,41 @@ app.get('/api/records/:resultId/resolve-data', async (req, res, next) => {
 app.get('/api/health', (_req, res) => {
   res.json({ ok: true });
 });
+
+// ── Security Test Panel (Demo Only) ─────────────────────────
+app.get('/security-test', (_req, res) => {
+  res.sendFile(path.join(WEB_ROOT, 'security-test.html'));
+});
+
+app.post('/api/security-test/text', (req, res) => {
+  res.status(200).json({
+    status: 'ACCEPTED',
+    message: 'Input accepted as safe',
+    received: req.body,
+  });
+});
+
+app.post(
+  '/api/security-test/upload',
+  uploadReportFile.single('file'),
+  handleMulterError,
+  uploadSandbox,
+  (req, res) => {
+    if (!req.file) {
+      return res.status(400).json({
+        status: 'REJECTED',
+        error: 'NO_FILE',
+        reason: 'No file provided for upload',
+      });
+    }
+    res.status(200).json({
+      status: 'ACCEPTED',
+      message: 'File accepted and verified successfully',
+      sanitizedFilename: req.file.originalname,
+      size: req.file.size,
+    });
+  }
+);
 
 app.get('*', (req, res, next) => {
   if (req.path.startsWith('/api/')) {

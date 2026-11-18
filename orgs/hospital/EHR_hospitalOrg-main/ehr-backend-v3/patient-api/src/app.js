@@ -13,6 +13,7 @@ const logger        = require('./config/logger');
 const gateway       = require('./fabric/gatewayManager');
 const { PEER_MAP }  = require('./fabric/peerRouter');
 const { errorHandler } = require('./middleware/errorHandler');
+const { sanitize } = require('./middleware/sanitize');
 
 const authRoutes    = require('./routes/auth');
 const profileRoutes = require('./routes/profile');
@@ -29,6 +30,7 @@ const PORT = process.env.PORT || 3005;
 app.use(cors({ origin: '*', credentials: true }))
 app.use(helmet({ crossOriginResourcePolicy: false }));
 app.use(express.json({ limit: '1mb' }));
+app.use(sanitize);
 app.use(morgan('combined', { stream: { write: m => logger.http(m.trim()) } }));
 app.use(rateLimit({
   windowMs:        60_000,

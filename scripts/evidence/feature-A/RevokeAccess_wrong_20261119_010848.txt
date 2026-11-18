@@ -1,0 +1,2 @@
+--- Wrong identity (doctor) output ---
+test-abac.sh: line 33: peer: command not found

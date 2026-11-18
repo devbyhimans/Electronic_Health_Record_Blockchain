@@ -125,7 +125,7 @@ function escapeHtml(text) {
 }
 
 function setOutput(label, payload) {
-  rawOutput.innerHTML = `<span style="color: #94f2cf;">${label}</span>\n\n${escapeHtml(JSON.stringify(payload, null, 2))}`;
+  rawOutput.innerHTML = `<span style="color: #94f2cf;">${escapeHtml(label)}</span>\n\n${escapeHtml(JSON.stringify(payload, null, 2))}`;
 }
 
 function toggleLoading(button, isLoading) {

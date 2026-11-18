@@ -1,2 +1,2 @@
-[34m2026-10-28 02:35:19.321 IST 0001 INFO[0m [channelCmd] [34;1mInitCmdFactory[0m -> Endorser and orderer connections initialized
-[34m2026-10-28 02:35:19.349 IST 0002 INFO[0m [channelCmd] [34;1mexecuteJoin[0m -> Successfully submitted proposal to join channel
+[34m2026-11-19 01:06:01.981 IST 0001 INFO[0m [channelCmd] [34;1mInitCmdFactory[0m -> Endorser and orderer connections initialized
+Error: proposal failed (err: bad proposal response 500: cannot create ledger from genesis block: ledger [ehrchannel] already exists with state [ACTIVE])
