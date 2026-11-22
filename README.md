@@ -1,13 +1,31 @@
-# Electronic Health Record (EHR) Blockchain Consortium
-## Multi-Organization Healthcare Ledger with Zero-PHI IPFS Off-Chain Storage, 13 Chaincode Contracts, Autonomous Clinical AI Decision Support, and Real-Time Observability
+<div align="center">
 
-[![Hyperledger Fabric](https://img.shields.io/badge/Hyperledger%20Fabric-v2.5%20LTS-2F3134?logo=hyperledger&logoColor=white)](https://www.hyperledger.org/projects/fabric)
-[![IPFS](https://img.shields.io/badge/IPFS-Kubo%20v0.31-65C2CB?logo=ipfs&logoColor=white)](https://ipfs.tech/)
-[![FastAPI](https://img.shields.io/badge/FastAPI-v0.115-009688?logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
-[![React](https://img.shields.io/badge/React-v18.3-61DAFB?logo=react&logoColor=black)](https://react.dev/)
-[![Docker](https://img.shields.io/badge/Docker%20Compose-v2-2496ED?logo=docker&logoColor=white)](https://www.docker.com/)
-[![Nginx](https://img.shields.io/badge/Nginx-Reverse%20Proxy-009639?logo=nginx&logoColor=white)](https://nginx.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+# 🏥 CareGrid Enterprise EHR Consortium
+
+### Decentralized Healthcare & Insurance Adjudication Blockchain
+**Multi-Organization Healthcare Ledger with Zero-PHI IPFS Off-Chain Storage, 13 Chaincode Contracts, Autonomous Clinical AI Decision Support, and Real-Time Observability**
+
+<br/>
+
+[![Hyperledger Fabric](https://img.shields.io/badge/Hyperledger%20Fabric-2.5%20LTS-2F3134?style=for-the-badge&logo=hyperledger&logoColor=white)](https://www.hyperledger.org/)
+[![IPFS](https://img.shields.io/badge/Storage-Kubo%20IPFS-69C4CD?style=for-the-badge&logo=ipfs&logoColor=white)](https://ipfs.tech/)
+[![Consensus](https://img.shields.io/badge/Consensus-etcdraft%20(CFT)-007ACC?style=for-the-badge)](https://hyperledger-fabric.readthedocs.io)
+[![Privacy](https://img.shields.io/badge/Architecture-Dual--Channel%20Consortium-10B981?style=for-the-badge)](docs/architecture/architecture.md)
+[![Compliance](https://img.shields.io/badge/Compliance-HIPAA%20%7C%20DPDP%202023-4F46E5?style=for-the-badge)](docs/architecture/PROJECT_CONTEXT.md)
+
+[![FastAPI](https://img.shields.io/badge/FastAPI-v0.115-009688?style=flat-square&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com/)
+[![React](https://img.shields.io/badge/React-v18.3-61DAFB?style=flat-square&logo=react&logoColor=black)](https://react.dev/)
+[![Docker](https://img.shields.io/badge/Docker%20Compose-v2-2496ED?style=flat-square&logo=docker&logoColor=white)](https://www.docker.com/)
+[![Nginx](https://img.shields.io/badge/Nginx-Reverse%20Proxy-009639?style=flat-square&logo=nginx&logoColor=white)](https://nginx.org/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg?style=flat-square)](LICENSE)
+
+<p align="center">
+  <b>Multi-Organization Healthcare Consortium:</b> Hospital Network • Diagnostic Laboratories • Insurance TPAs • Pharmacy Swarm
+</p>
+
+[✨ Live Portals](#-unified-service-directory--access-endpoints) • [🏗️ Architecture](docs/architecture/architecture.md) • [📜 Smart Contracts](docs/architecture/SMART_CONTRACT_README.md) • [⚡ Quick Start](#-quick-start--verification-wsl2--ubuntu-linux)
+
+</div>
 
 ---
 
