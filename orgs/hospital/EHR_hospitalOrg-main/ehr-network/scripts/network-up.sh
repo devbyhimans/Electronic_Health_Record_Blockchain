@@ -304,18 +304,29 @@ start_network() {
 # ============================================================
 
 create_channel() {
-  section "STEP 4: CREATING CHANNEL AND JOINING PEERS"
+  section "STEP 4: CREATING CHANNELS AND JOINING PEERS"
 
   cd "$BASE_DIR"
 
-  # Let createChannel.sh use its own default org list.
-  # Passing --orgs can conflict if createChannel.sh expects different format.
+  # 1. Create tripartite ehrchannel (Hospital, Diagnostics, Provider)
+  log "Creating clinical consortium channel '$CHANNEL_NAME'..."
   bash "$SCRIPTS_DIR/createChannel.sh" \
     --channel "$CHANNEL_NAME" \
+    --orgs "1,2,3,4,5" \
     --delay "$DELAY" \
     --retry "$MAX_RETRY"
 
-  success "Channel '$CHANNEL_NAME' created and all peers joined"
+  success "Channel '$CHANNEL_NAME' created and all 5 peers joined"
+
+  # 2. Create dedicated insurancechannel (Hospital + Provider only; Diagnostics excluded)
+  log "Creating dedicated settlement channel 'insurancechannel' (HospitalMSP + ProviderMSP)..."
+  bash "$SCRIPTS_DIR/createChannel.sh" \
+    --channel "insurancechannel" \
+    --orgs "1,3,4,5" \
+    --delay "$DELAY" \
+    --retry "$MAX_RETRY"
+
+  success "Channel 'insurancechannel' created and Hospital + Provider peers joined (DiagnosticsMSP isolated)"
 }
 
 # ============================================================
@@ -376,12 +387,19 @@ set_anchor_peers() {
       "$BASE_DIR/channel-artifacts/current_config.json" 2>/dev/null)
 
     if [ "$ANCHOR" != "not set" ] && [ -n "$ANCHOR" ]; then
-      success "  $MSP anchor peer: $ANCHOR ✓"
+      success "  $MSP anchor peer on $CHANNEL_NAME: $ANCHOR ✓"
     else
-      warn "  $MSP anchor peer not set — running setAnchorPeer.sh $ORG_NUM..."
+      warn "  $MSP anchor peer on $CHANNEL_NAME not set — running setAnchorPeer.sh $ORG_NUM..."
       bash "$SCRIPTS_DIR/setAnchorPeer.sh" "$ORG_NUM" "$CHANNEL_NAME" || \
         warn "  setAnchorPeer.sh $ORG_NUM failed — check manually"
     fi
+  done
+
+  # Also ensure anchor peers on insurancechannel for Hospital (1) and Provider (3)
+  log "Verifying anchor peers for insurancechannel (HospitalMSP & ProviderMSP)..."
+  for ORG_NUM in 1 3; do
+    bash "$SCRIPTS_DIR/setAnchorPeer.sh" "$ORG_NUM" "insurancechannel" 2>/dev/null || \
+      warn "  setAnchorPeer.sh $ORG_NUM on insurancechannel — check manually"
   done
 
   success "Anchor peer check complete"
@@ -403,36 +421,41 @@ print_status() {
     done
 
   echo ""
-  echo -e "${WHITE}  Channel: ${GREEN}$CHANNEL_NAME${NC}"
+  echo -e "${WHITE}  Consortium Channels:${NC}"
+  echo -e "  ${GREEN}✓${NC} ${CYAN}ehrchannel${NC}        → Tripartite clinical & lab channel (HospitalMSP + DiagnosticsMSP + ProviderMSP)"
+  echo -e "  ${GREEN}✓${NC} ${CYAN}insurancechannel${NC}  → Dedicated settlement channel (HospitalMSP + ProviderMSP — Diagnostics isolated)"
   echo ""
-  echo -e "${WHITE}  Peers on channel:${NC}"
+  echo -e "${WHITE}  Peers on ehrchannel (all 5):${NC}"
   echo -e "  ${GREEN}✓${NC} peer0.hospital   :7051  → Auth/Reception"
   echo -e "  ${GREEN}✓${NC} peer1.hospital   :9051  → Doctor"
   echo -e "  ${GREEN}✓${NC} peer2.hospital   :10051 → Nurse/Pharmacist"
   echo -e "  ${GREEN}✓${NC} peer0.diagnostic :8051  → Lab"
-  echo -e "  ${GREEN}✓${NC} peer0.provider   :11051 → Insurance"
+  echo -e "  ${GREEN}✓${NC} peer0.provider   :11051 → Insurance & Cross-Org"
+  echo ""
+  echo -e "${WHITE}  Peers on insurancechannel (4):${NC}"
+  echo -e "  ${GREEN}✓${NC} peer0.hospital   :7051  → Hospital Billing"
+  echo -e "  ${GREEN}✓${NC} peer1.hospital   :9051  → Doctor Records"
+  echo -e "  ${GREEN}✓${NC} peer2.hospital   :10051 → Inpatient Settlement"
+  echo -e "  ${GREEN}✓${NC} peer0.provider   :11051 → Claims & Adjudication"
+  echo -e "  ${YELLOW}○${NC} peer0.diagnostic :8051  → ${YELLOW}EXCLUDED (Cryptographically Isolated)${NC}"
   echo ""
   echo -e "${WHITE}  IPFS Node:${NC}"
   echo -e "  ${GREEN}✓${NC} ipfs.ehr.local"
   echo -e "      API:     http://localhost:5001"
   echo -e "      Gateway: http://localhost:8090"
   echo ""
-  echo -e "${WHITE}  Role → Peer mapping:${NC}"
-  echo -e "  receptionist, hospitaladmin  → peer0.hospital  :7051"
-  echo -e "  doctor, medrecordofficer     → peer1.hospital  :9051"
-  echo -e "  nurse, pharmacist            → peer2.hospital  :10051"
-  echo -e "  labreceptionist, labtech,    → peer0.diagnostic :8051"
+  echo -e "${WHITE}  Role → Peer & Channel mapping:${NC}"
+  echo -e "  receptionist, hospitaladmin  → peer0.hospital   :7051 (ehrchannel)"
+  echo -e "  doctor, medrecordofficer     → peer1.hospital   :9051 (ehrchannel)"
+  echo -e "  nurse, pharmacist            → peer2.hospital   :10051 (ehrchannel)"
+  echo -e "  labreceptionist, labtech,    → peer0.diagnostic :8051 (ehrchannel)"
   echo -e "  labsupervisor, radiologist"
   echo -e "  billingofficer, claimsauditor,"
-  echo -e "  insuranceofficer             → peer0.provider  :11051"
+  echo -e "  insuranceofficer             → peer0.provider   :11051 (insurancechannel)"
   echo ""
-  echo -e "${WHITE}  Next steps:${NC}"
-  echo -e "  1. Write chaincode  → chaincode/ehr-chaincode/"
-  echo -e "  2. Deploy chaincode → bash scripts/deployChaincode.sh \\"
-  echo -e "       --channel $CHANNEL_NAME \\"
-  echo -e "       --chaincode-name ehr \\"
-  echo -e "       --chaincode-path ./chaincode/ehr-chaincode \\"
-  echo -e "       --version 1.0 --sequence 1"
+  echo -e "${WHITE}  Chaincode Deployment:${NC}"
+  echo -e "  ehrchannel       → ehr (v3.1)"
+  echo -e "  insurancechannel → ehr (v1.1 Sequence 2)"
   echo ""
 }
 

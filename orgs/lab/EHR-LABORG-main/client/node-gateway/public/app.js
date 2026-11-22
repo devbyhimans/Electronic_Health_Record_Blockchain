@@ -15,6 +15,17 @@ const updateStatusForm = document.getElementById('updateStatusForm');
 const demoFillBtn = document.getElementById('demoFillBtn');
 const formatJsonBtn = document.getElementById('formatJsonBtn');
 
+// Bundle Elements (Approach 2)
+const bundleSelect = document.getElementById('bundleSelect');
+const bundleBiomarkersSection = document.getElementById('bundleBiomarkersSection');
+const bundleTitle = document.getElementById('bundleTitle');
+const bundleDescription = document.getElementById('bundleDescription');
+const bundleSummaryBadge = document.getElementById('bundleSummaryBadge');
+const bundleSummaryText = document.getElementById('bundleSummaryText');
+const bundleInputsGrid = document.getElementById('bundleInputsGrid');
+const bundleCriticalAlert = document.getElementById('bundleCriticalAlert');
+const jsonPayloadAccordion = document.getElementById('jsonPayloadAccordion');
+
 // File Upload
 const fileDropzone = document.getElementById('fileDropzone');
 const reportFileInput = document.getElementById('reportFile');
@@ -40,11 +51,18 @@ const metaPill = document.getElementById('metaPill');
 const recordSearch = document.getElementById('recordSearch');
 const statusFilters = document.getElementById('statusFilters');
 
-// Terminal Output
+// Terminal Output & Clinical Dossier (Approach 1)
 const rawOutput = document.getElementById('rawOutput');
 const clearOutputBtn = document.getElementById('clearOutputBtn');
 const copyOutputBtn = document.getElementById('copyOutputBtn');
 const toast = document.getElementById('toast');
+const btnViewReport = document.getElementById('btnViewReport');
+const btnViewJson = document.getElementById('btnViewJson');
+const clinicalReportView = document.getElementById('clinicalReportView');
+const rawTerminalView = document.getElementById('rawTerminalView');
+const dossierEmptyState = document.getElementById('dossierEmptyState');
+const dossierContent = document.getElementById('dossierContent');
+const inspectorPanel = document.getElementById('inspectorPanel');
 
 const FALLBACK_PEERS = [
   'peer0.lab.example.com',
@@ -190,9 +208,368 @@ async function apiRequest(path, options = {}) {
   return payload;
 }
 
+function switchInspectorView(mode) {
+  if (mode === 'report') {
+    if (btnViewReport) {
+      btnViewReport.classList.add('active');
+      btnViewReport.setAttribute('aria-selected', 'true');
+    }
+    if (btnViewJson) {
+      btnViewJson.classList.remove('active');
+      btnViewJson.setAttribute('aria-selected', 'false');
+    }
+    if (clinicalReportView) clinicalReportView.classList.remove('hidden');
+    if (rawTerminalView) rawTerminalView.classList.add('hidden');
+  } else {
+    if (btnViewJson) {
+      btnViewJson.classList.add('active');
+      btnViewJson.setAttribute('aria-selected', 'true');
+    }
+    if (btnViewReport) {
+      btnViewReport.classList.remove('active');
+      btnViewReport.setAttribute('aria-selected', 'false');
+    }
+    if (rawTerminalView) rawTerminalView.classList.remove('hidden');
+    if (clinicalReportView) clinicalReportView.classList.add('hidden');
+  }
+}
+
+if (btnViewReport) btnViewReport.addEventListener('click', () => switchInspectorView('report'));
+if (btnViewJson) btnViewJson.addEventListener('click', () => switchInspectorView('json'));
+
+function renderClinicalDossier(payload) {
+  if (!dossierContent || !dossierEmptyState) return;
+
+  if (!payload) {
+    dossierEmptyState.classList.remove('hidden');
+    dossierContent.classList.add('hidden');
+    return;
+  }
+
+  // If payload is an error:
+  if (payload.error) {
+    dossierEmptyState.classList.add('hidden');
+    dossierContent.classList.remove('hidden');
+    dossierContent.innerHTML = `
+      <div class="bundle-critical-alert" style="margin: 8px 0;">
+        <span class="alert-icon">⚠️</span>
+        <div class="alert-text">
+          <strong>Request Failed:</strong> ${escapeHtml(payload.error)}
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  // If payload is an integrity check summary:
+  if (payload.summary && Array.isArray(payload.records)) {
+    dossierEmptyState.classList.add('hidden');
+    dossierContent.classList.remove('hidden');
+    const allOk = payload.ok !== false && payload.summary.mismatch === 0 && payload.summary.missing === 0;
+    dossierContent.innerHTML = `
+      <div class="dossier-card">
+        <div class="dossier-header-bar">
+          <div class="dossier-patient-info">
+            <div class="dossier-id-row">
+              <span class="dossier-result-id">Audit Run: ${escapeHtml(payload.trigger || 'Manual')}</span>
+              <span class="dossier-bundle-badge">Ledger Integrity Check</span>
+            </div>
+            <div class="dossier-timestamp-row">
+              <span>Run at: <strong>${payload.startedAt ? new Date(payload.startedAt).toLocaleTimeString() : '—'}</strong></span>
+              <span>•</span>
+              <span>Channel: <code>ehrchannel</code></span>
+              <span>•</span>
+              <span>Verified CIDs: <strong>${payload.summary.checked}</strong></span>
+            </div>
+          </div>
+          <div>
+            <span class="status-pill-badge ${allOk ? 'reported' : 'critical'}">
+              ${allOk ? '✓ ALL CHECKS PASSED' : '⚠ INTEGRITY ALERT'}
+            </span>
+          </div>
+        </div>
+
+        <div class="dossier-section">
+          <div class="dossier-section-header">
+            <span class="section-icon">🛡️</span>
+            <h4>Cryptographic Hash Verification Summary</h4>
+          </div>
+          <div class="biomarkers-table-wrap">
+            <table class="dossier-table">
+              <thead>
+                <tr>
+                  <th>Result ID</th>
+                  <th>Audit Target</th>
+                  <th>Expected vs Actual Digest</th>
+                  <th style="text-align: right;">Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${payload.records.map(rec => (rec.checks || []).map(chk => `
+                  <tr>
+                    <td><strong>${escapeHtml(rec.resultId)}</strong></td>
+                    <td><span class="prov-hash">${escapeHtml(chk.kind || 'payload')}</span></td>
+                    <td><code class="prov-hash" style="font-size:0.68rem;">${chk.expected ? escapeHtml(chk.expected.slice(0, 20) + '...') : '—'}</code></td>
+                    <td style="text-align: right;">
+                      <span class="status-pill-badge ${chk.status === 'OK' ? 'reported' : 'critical'}">
+                        ${chk.status === 'OK' ? '✓ OK' : '⚠ ' + escapeHtml(chk.status)}
+                      </span>
+                    </td>
+                  </tr>
+                `).join('')).join('')}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  // Extract Diagnostic Record
+  let record = null;
+  if (payload.result) {
+    record = Array.isArray(payload.result) ? payload.result[0] : payload.result;
+  } else if (payload.resultId) {
+    record = payload;
+  }
+
+  if (!record) {
+    dossierEmptyState.classList.remove('hidden');
+    dossierContent.classList.add('hidden');
+    return;
+  }
+
+  dossierEmptyState.classList.add('hidden');
+  dossierContent.classList.remove('hidden');
+
+  const resultId = record.resultId || 'N/A';
+  const patientId = record.patientId || 'N/A';
+  const testCode = record.testCode || 'Diagnostic Panel';
+  const status = record.status || 'REPORTED';
+  const collectedAt = record.collectedAt ? new Date(record.collectedAt).toLocaleString([], { month: 'short', day: 'numeric', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—';
+  const peer = payload.peer || record.peer || selectedPeer() || 'peer0.diagnostic.example.com';
+
+  // Extract IPFS & AI data
+  const ipfsContainer = payload.ipfs || {};
+  let ipfsData = ipfsContainer.data || (record.resultData && record.resultData.data) || null;
+  if (!ipfsData && record.resultData && typeof record.resultData === 'object' && !record.resultData.cid) {
+    ipfsData = record.resultData;
+  }
+  const resultDataMeta = record.resultData && record.resultData.cid ? record.resultData : {};
+  const cid = ipfsContainer.cid || resultDataMeta.cid || null;
+  const digest = resultDataMeta.digest || null;
+  const gatewayUrl = ipfsContainer.gatewayUrl || resultDataMeta.gatewayUrl || (cid ? `http://localhost:8090/ipfs/${cid}` : '#');
+
+  // Bundle title & parameters
+  const bundleTitle = ipfsData?.bundle || testCode;
+  let parameters = ipfsData?.parameters || null;
+
+  // If parameters is null, but ipfsData has keys
+  if (!parameters && ipfsData && typeof ipfsData === 'object') {
+    parameters = {};
+    for (const [k, v] of Object.entries(ipfsData)) {
+      if (['bundle', 'bundleCode', 'overallStatus', 'criticalAlert', 'evaluatedAt', 'ai'].includes(k)) continue;
+      parameters[k] = v;
+    }
+  }
+
+  // Build biomarker rows
+  let biomarkerRows = '';
+  let paramCount = 0;
+
+  if (parameters && typeof parameters === 'object') {
+    const entries = Object.entries(parameters);
+    paramCount = entries.length;
+
+    biomarkerRows = entries.map(([key, val]) => {
+      let label = key;
+      let observedVal = '—';
+      let unit = '';
+      let refRange = 'Standard clinical range';
+      let flag = 'NORMAL';
+
+      if (val && typeof val === 'object') {
+        label = val.label || key.replace(/_/g, ' ').toUpperCase();
+        observedVal = val.value !== undefined ? String(val.value) : '—';
+        unit = val.unit || '';
+        refRange = val.referenceRange || val.range || 'Standard Range';
+        flag = (val.flag || 'NORMAL').toUpperCase();
+      } else {
+        label = key.replace(/_/g, ' ').toUpperCase();
+        observedVal = String(val);
+      }
+
+      let pillClass = 'badge-normal';
+      let pillIcon = '✓';
+      if (flag === 'CRITICAL') { pillClass = 'badge-critical'; pillIcon = '🚨'; }
+      else if (flag === 'HIGH') { pillClass = 'badge-high'; pillIcon = '⬆'; }
+      else if (flag === 'LOW') { pillClass = 'badge-low'; pillIcon = '⬇'; }
+
+      return `
+        <tr>
+          <td><span class="biomarker-name">${escapeHtml(label)}</span></td>
+          <td class="biomarker-val-cell">${escapeHtml(observedVal)} <span class="unit">${escapeHtml(unit)}</span></td>
+          <td class="biomarker-ref-cell">${escapeHtml(refRange)}</td>
+          <td style="text-align: right;">
+            <span class="biomarker-pill ${pillClass}">${pillIcon} ${escapeHtml(flag)}</span>
+          </td>
+        </tr>
+      `;
+    }).join('');
+  }
+
+  if (!biomarkerRows) {
+    biomarkerRows = `<tr><td colspan="4" class="table-empty-row" style="padding:16px;">Biomarker parameters stored as anchored IPFS attachment.</td></tr>`;
+  }
+
+  // AI Section
+  const ai = record.resultData?.ai || ipfsData?.ai || payload.ai || null;
+  let aiSectionHtml = '';
+
+  if (ai && (ai.summary || ai.enabled)) {
+    const summaryText = ai.summary || 'AI diagnostic analysis synthesized from laboratory findings.';
+    const recText = ai.recommendation ? `
+      <div class="ai-rec-block">
+        <strong style="color:var(--vitalis-blue); display:block; margin-bottom:2px;">Clinical Recommendation:</strong>
+        ${escapeHtml(ai.recommendation)}
+      </div>
+    ` : '';
+    const model = ai.model || 'Gemini 2.5 / 3.8 Flash';
+    const conf = typeof ai.confidence === 'object' ? (ai.confidence.labReport || 'High') : (ai.confidence || 'High');
+
+    aiSectionHtml = `
+      <div class="dossier-section ai-section">
+        <div class="ai-box-header">
+          <div class="ai-title-wrap">
+            <span class="ai-sparkle-icon">✨</span>
+            <div>
+              <h4>Gemini Clinical Decision Support</h4>
+              <span class="ai-sub">${escapeHtml(model)} &middot; Multi-Modal Clinical Intelligence</span>
+            </div>
+          </div>
+          <div class="ai-confidence-chip">
+            <span class="ai-chip-dot"></span>
+            <span>Confidence: ${escapeHtml(String(conf).toUpperCase())}</span>
+          </div>
+        </div>
+        <div class="ai-body">
+          <div class="ai-finding-block">
+            <strong class="ai-label">Clinical Impression:</strong>
+            <p style="margin: 0;">${escapeHtml(summaryText)}</p>
+          </div>
+          ${recText}
+          <div class="ai-footer-row">
+            <span class="ai-disclaimer">⚕️ Assistive clinical guidance; final evaluation by authorized medical officer required.</span>
+          </div>
+        </div>
+      </div>
+    `;
+  } else {
+    aiSectionHtml = `
+      <div class="dossier-section" style="padding: 10px 14px; background: var(--lab-surface-soft); border-radius: var(--radius-md); border: 1px dashed var(--lab-border);">
+        <div style="display:flex; align-items:center; justify-content:space-between; font-size:0.75rem; flex-wrap:wrap; gap:6px;">
+          <span style="color:var(--lab-text-muted);">✨ <strong>Gemini Clinical AI:</strong> Inactive for this record. (Check <em>Run Gemini AI Diagnostics</em> when submitting new tests)</span>
+          <span class="param-count-badge">Assistive Mode</span>
+        </div>
+      </div>
+    `;
+  }
+
+  // Cryptographic Provenance Bar
+  const shortCid = cid ? `${cid.slice(0, 10)}...${cid.slice(-6)}` : 'On-Chain Ledger';
+  const shortDigest = digest ? `${digest.slice(0, 12)}...${digest.slice(-8)}` : 'Verified On-Chain';
+
+  const provenanceHtml = `
+    <div class="dossier-provenance-bar">
+      <div class="provenance-seal">
+        <span class="seal-icon">🔒</span>
+        <div class="seal-text">
+          <strong>Immutable Fabric Anchor</strong>
+          <span>Channel <code>ehrchannel</code> &middot; Endorsed by <code>${escapeHtml(peer)}</code></span>
+        </div>
+      </div>
+      <div class="provenance-chips">
+        ${cid ? `
+          <div class="prov-chip">
+            <span class="prov-label">IPFS CID:</span>
+            <a href="${escapeHtml(gatewayUrl)}" target="_blank" rel="noopener noreferrer" class="prov-link" title="Open CID in IPFS Kubo gateway">
+              ${escapeHtml(shortCid)} ↗
+            </a>
+          </div>
+        ` : ''}
+        ${digest ? `
+          <div class="prov-chip">
+            <span class="prov-label">SHA-256 Digest:</span>
+            <code class="prov-hash" title="${escapeHtml(digest)}">${escapeHtml(shortDigest)}</code>
+          </div>
+        ` : ''}
+      </div>
+    </div>
+  `;
+
+  dossierContent.innerHTML = `
+    <div class="dossier-card">
+      <!-- Header -->
+      <div class="dossier-header-bar">
+        <div class="dossier-patient-info">
+          <div class="dossier-id-row">
+            <span class="dossier-result-id">${escapeHtml(resultId)}</span>
+            <span class="dossier-patient-id">Patient: <strong>${escapeHtml(patientId)}</strong></span>
+            <span class="dossier-bundle-badge">${escapeHtml(bundleTitle)}</span>
+          </div>
+          <div class="dossier-timestamp-row">
+            <span>Collected: <strong>${escapeHtml(collectedAt)}</strong></span>
+            <span>•</span>
+            <span>Peer: <code>${escapeHtml(peer)}</code></span>
+            <span>•</span>
+            <span>Org: <strong>${escapeHtml(record.ownerOrg || 'DiagnosticsMSP')}</strong></span>
+          </div>
+        </div>
+        <div>
+          ${getStatusBadge(status)}
+        </div>
+      </div>
+
+      <!-- Biomarkers Section -->
+      <div class="dossier-section">
+        <div class="dossier-section-header">
+          <span class="section-icon">🧪</span>
+          <h4>Measured Biomarkers &amp; Findings</h4>
+          <span class="param-count-badge">${paramCount} Parameter${paramCount === 1 ? '' : 's'}</span>
+        </div>
+        <div class="biomarkers-table-wrap">
+          <table class="dossier-table">
+            <thead>
+              <tr>
+                <th>Biomarker / Assay</th>
+                <th>Observed Value</th>
+                <th>Reference Range</th>
+                <th style="text-align: right;">Status Flag</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${biomarkerRows}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- AI Section -->
+      ${aiSectionHtml}
+
+      <!-- Cryptographic Provenance -->
+      ${provenanceHtml}
+    </div>
+  `;
+}
+
 function setOutput(label, payload) {
   currentOutputPayload = payload;
-  rawOutput.innerHTML = `<span style="color: #54f1dc; font-weight: 700;">// ${escapeHtml(label)}</span>\n\n${escapeHtml(JSON.stringify(payload, null, 2))}`;
+  if (rawOutput) {
+    rawOutput.innerHTML = `<span style="color: #54f1dc; font-weight: 700;">// ${escapeHtml(label)}</span>\n\n${escapeHtml(JSON.stringify(payload, null, 2))}`;
+  }
+  renderClinicalDossier(payload);
 }
 
 function toggleLoading(button, isLoading) {
@@ -287,39 +664,317 @@ function updateFileBadge() {
 }
 
 // ==========================================================================
+// Clinical Indication / Disease-Driven Diagnostic Bundles (Approach 2)
+// ==========================================================================
+const CLINICAL_BUNDLES = {
+  CARDIAC: {
+    id: 'CARDIAC',
+    name: 'Acute Chest Pain & ACS (Cardiac Workup)',
+    code: 'CARDIAC-ACS',
+    description: 'Biomarkers for acute coronary syndrome, myocardial necrosis & cardiovascular lipid profile',
+    biomarkers: [
+      { key: 'troponin_i', label: 'hs-Troponin I', unit: 'ng/mL', min: 0, max: 50, step: '0.01', refMin: 0, refMax: 0.04, criticalHigh: 0.40, demo: 0.02, help: 'Normal < 0.04 ng/mL' },
+      { key: 'ck_mb', label: 'CK-MB (Isoenzyme)', unit: 'ng/mL', min: 0, max: 200, step: '0.1', refMin: 0, refMax: 5.0, criticalHigh: 10.0, demo: 2.8, help: 'Normal 0.0 - 5.0 ng/mL' },
+      { key: 'total_cholesterol', label: 'Total Cholesterol', unit: 'mg/dL', min: 40, max: 500, step: '1', refMin: 120, refMax: 200, criticalHigh: 280, demo: 185, help: 'Desirable < 200 mg/dL' },
+      { key: 'hdl', label: 'HDL Cholesterol', unit: 'mg/dL', min: 10, max: 150, step: '1', refMin: 40, refMax: 80, criticalLow: 30, demo: 54, help: 'Protective > 40 mg/dL' },
+      { key: 'ldl', label: 'LDL Cholesterol', unit: 'mg/dL', min: 20, max: 350, step: '1', refMin: 50, refMax: 100, criticalHigh: 160, demo: 96, help: 'Optimal < 100 mg/dL' },
+      { key: 'triglycerides', label: 'Triglycerides', unit: 'mg/dL', min: 30, max: 800, step: '1', refMin: 50, refMax: 150, criticalHigh: 300, demo: 130, help: 'Normal < 150 mg/dL' },
+    ]
+  },
+  DIABETES: {
+    id: 'DIABETES',
+    name: 'Diabetes, Glycemic & Metabolic Review',
+    code: 'DIABETES-METABOLIC',
+    description: 'Glycemic control, insulin resistance & diabetic microvascular screening panel',
+    biomarkers: [
+      { key: 'fasting_glucose', label: 'Fasting Blood Glucose', unit: 'mg/dL', min: 30, max: 600, step: '1', refMin: 70, refMax: 99, criticalLow: 50, criticalHigh: 250, demo: 92, help: 'Normal 70 - 99 mg/dL' },
+      { key: 'post_prandial_glucose', label: 'Post-Prandial Glucose (2h)', unit: 'mg/dL', min: 40, max: 700, step: '1', refMin: 80, refMax: 140, criticalHigh: 300, demo: 128, help: 'Normal < 140 mg/dL' },
+      { key: 'hba1c', label: 'Glycated HbA1c', unit: '%', min: 3, max: 20, step: '0.1', refMin: 4.0, refMax: 5.6, criticalHigh: 9.0, demo: 5.4, help: 'Normal < 5.7% (Diabetes >= 6.5%)' },
+      { key: 'serum_creatinine', label: 'Serum Creatinine', unit: 'mg/dL', min: 0.1, max: 15, step: '0.05', refMin: 0.7, refMax: 1.3, criticalHigh: 2.5, demo: 0.95, help: 'Normal 0.7 - 1.3 mg/dL' },
+      { key: 'urine_microalbumin', label: 'Urine Microalbumin', unit: 'mg/L', min: 0, max: 400, step: '0.5', refMin: 0, refMax: 20, criticalHigh: 100, demo: 9.2, help: 'Normal < 20 mg/L' },
+    ]
+  },
+  SEPSIS: {
+    id: 'SEPSIS',
+    name: 'Acute Febrile Illness & Sepsis Screening',
+    code: 'FEBRILE-SEPSIS',
+    description: 'Hematologic markers for systemic inflammatory response, bacteremia & sepsis triage',
+    biomarkers: [
+      { key: 'wbc_count', label: 'Total WBC Count', unit: 'cells/mcL', min: 500, max: 60000, step: '100', refMin: 4500, refMax: 11000, criticalLow: 2500, criticalHigh: 18000, demo: 7200, help: 'Normal 4,500 - 11,000 cells/mcL' },
+      { key: 'hemoglobin', label: 'Hemoglobin (Hb)', unit: 'g/dL', min: 2, max: 25, step: '0.1', refMin: 13.0, refMax: 17.5, criticalLow: 7.0, demo: 14.8, help: 'Normal 13.0 - 17.5 g/dL' },
+      { key: 'platelets', label: 'Platelet Count', unit: 'x10³/mcL', min: 10, max: 1200, step: '5', refMin: 150, refMax: 450, criticalLow: 50, demo: 255, help: 'Normal 150 - 450 x10³/mcL' },
+      { key: 'crp', label: 'C-Reactive Protein (CRP)', unit: 'mg/L', min: 0, max: 300, step: '0.1', refMin: 0, refMax: 5.0, criticalHigh: 25.0, demo: 2.1, help: 'Normal < 5.0 mg/L' },
+      { key: 'esr', label: 'ESR (Westergren)', unit: 'mm/hr', min: 0, max: 140, step: '1', refMin: 0, refMax: 20, criticalHigh: 60, demo: 11, help: 'Normal 0 - 20 mm/hr' },
+    ]
+  },
+  HEPATIC: {
+    id: 'HEPATIC',
+    name: 'Hepatic Dysfunction & Jaundice Workup',
+    code: 'HEPATIC-JAUNDICE',
+    description: 'Biliary clearance, transaminase transamination & hepatocellular synthesis profile',
+    biomarkers: [
+      { key: 'total_bilirubin', label: 'Total Bilirubin', unit: 'mg/dL', min: 0, max: 30, step: '0.05', refMin: 0.2, refMax: 1.2, criticalHigh: 3.0, demo: 0.8, help: 'Normal 0.2 - 1.2 mg/dL' },
+      { key: 'direct_bilirubin', label: 'Direct Bilirubin', unit: 'mg/dL', min: 0, max: 15, step: '0.05', refMin: 0.0, refMax: 0.3, criticalHigh: 1.0, demo: 0.2, help: 'Normal 0.0 - 0.3 mg/dL' },
+      { key: 'alt_sgpt', label: 'ALT / SGPT', unit: 'U/L', min: 1, max: 2000, step: '1', refMin: 7, refMax: 56, criticalHigh: 200, demo: 34, help: 'Normal 7 - 56 U/L' },
+      { key: 'ast_sgot', label: 'AST / SGOT', unit: 'U/L', min: 1, max: 2000, step: '1', refMin: 10, refMax: 40, criticalHigh: 180, demo: 28, help: 'Normal 10 - 40 U/L' },
+      { key: 'alp', label: 'Alkaline Phosphatase (ALP)', unit: 'U/L', min: 10, max: 1500, step: '1', refMin: 44, refMax: 147, criticalHigh: 350, demo: 92, help: 'Normal 44 - 147 U/L' },
+      { key: 'serum_albumin', label: 'Serum Albumin', unit: 'g/dL', min: 1, max: 8, step: '0.1', refMin: 3.5, refMax: 5.5, criticalLow: 2.5, demo: 4.4, help: 'Normal 3.5 - 5.5 g/dL' },
+    ]
+  },
+  RENAL: {
+    id: 'RENAL',
+    name: 'Renal Impairment & Electrolyte Balance',
+    code: 'RENAL-ELECTROLYTE',
+    description: 'Glomerular filtration rate indicators, nitrogenous waste & serum electrolytes',
+    biomarkers: [
+      { key: 'serum_creatinine', label: 'Serum Creatinine', unit: 'mg/dL', min: 0.1, max: 20, step: '0.05', refMin: 0.7, refMax: 1.3, criticalHigh: 3.0, demo: 0.92, help: 'Normal 0.7 - 1.3 mg/dL' },
+      { key: 'bun', label: 'Blood Urea Nitrogen (BUN)', unit: 'mg/dL', min: 1, max: 150, step: '1', refMin: 7, refMax: 20, criticalHigh: 50, demo: 15, help: 'Normal 7 - 20 mg/dL' },
+      { key: 'potassium', label: 'Potassium (K+)', unit: 'mEq/L', min: 1, max: 10, step: '0.1', refMin: 3.5, refMax: 5.0, criticalLow: 2.8, criticalHigh: 6.0, demo: 4.3, help: 'Normal 3.5 - 5.0 mEq/L' },
+      { key: 'sodium', label: 'Sodium (Na+)', unit: 'mEq/L', min: 90, max: 180, step: '1', refMin: 135, refMax: 145, criticalLow: 125, criticalHigh: 155, demo: 141, help: 'Normal 135 - 145 mEq/L' },
+      { key: 'uric_acid', label: 'Serum Uric Acid', unit: 'mg/dL', min: 1, max: 20, step: '0.1', refMin: 3.5, refMax: 7.2, criticalHigh: 10.0, demo: 5.4, help: 'Normal 3.5 - 7.2 mg/dL' },
+    ]
+  }
+};
+
+let activeBundleKey = null;
+
+function renderBundle(bundleKey) {
+  activeBundleKey = bundleKey;
+  if (!bundleKey || bundleKey === 'CUSTOM') {
+    if (bundleBiomarkersSection) bundleBiomarkersSection.classList.add('hidden');
+    if (jsonPayloadAccordion) jsonPayloadAccordion.open = true;
+    return;
+  }
+
+  const bundle = CLINICAL_BUNDLES[bundleKey];
+  if (!bundle) return;
+
+  if (bundleBiomarkersSection) bundleBiomarkersSection.classList.remove('hidden');
+  if (bundleTitle) bundleTitle.textContent = bundle.name;
+  if (bundleDescription) bundleDescription.textContent = bundle.description;
+
+  const testCodeInput = document.getElementById('createTestCode');
+  if (testCodeInput) testCodeInput.value = bundle.code;
+
+  if (bundleInputsGrid) {
+    bundleInputsGrid.innerHTML = bundle.biomarkers.map((b) => `
+      <div class="biomarker-card" id="card_${b.key}">
+        <div class="biomarker-top">
+          <label class="biomarker-label" for="bio_${b.key}" title="${escapeHtml(b.label)}">${escapeHtml(b.label)}</label>
+          <span class="biomarker-pill badge-empty" id="pill_${b.key}">—</span>
+        </div>
+        <div class="biomarker-input-wrap">
+          <input 
+            type="number" 
+            class="biomarker-input" 
+            id="bio_${b.key}" 
+            data-key="${b.key}" 
+            step="${b.step}" 
+            min="${b.min}" 
+            max="${b.max}" 
+            placeholder="${b.refMin !== undefined ? `${b.refMin} - ${b.refMax}` : ''}" 
+          />
+          <span class="biomarker-unit">${escapeHtml(b.unit)}</span>
+        </div>
+        <div class="biomarker-ref">${escapeHtml(b.help)}</div>
+      </div>
+    `).join('');
+
+    // Attach real-time input listeners to each biomarker input
+    bundle.biomarkers.forEach((b) => {
+      const input = document.getElementById(`bio_${b.key}`);
+      if (input) {
+        input.addEventListener('input', () => evaluateBundleParameters());
+      }
+    });
+  }
+
+  evaluateBundleParameters();
+}
+
+function evaluateBundleParameters() {
+  if (!activeBundleKey || activeBundleKey === 'CUSTOM') return;
+  const bundle = CLINICAL_BUNDLES[activeBundleKey];
+  if (!bundle) return;
+
+  const parameters = {};
+  let hasCritical = false;
+  let hasAbnormal = false;
+  let filledCount = 0;
+
+  bundle.biomarkers.forEach((b) => {
+    const input = document.getElementById(`bio_${b.key}`);
+    const pill = document.getElementById(`pill_${b.key}`);
+    const card = document.getElementById(`card_${b.key}`);
+    const rawVal = input ? input.value.trim() : '';
+
+    if (rawVal === '') {
+      if (pill) {
+        pill.textContent = '—';
+        pill.className = 'biomarker-pill badge-empty';
+      }
+      if (card) {
+        card.className = 'biomarker-card';
+      }
+      return;
+    }
+
+    const val = parseFloat(rawVal);
+    if (isNaN(val)) return;
+
+    filledCount++;
+    let flag = 'NORMAL';
+    let pillText = '✓ NORMAL';
+    let pillClass = 'badge-normal';
+    let cardClass = 'card-normal';
+
+    const isCritHigh = b.criticalHigh !== undefined && val >= b.criticalHigh;
+    const isCritLow = b.criticalLow !== undefined && val <= b.criticalLow;
+
+    if (isCritHigh || isCritLow) {
+      flag = 'CRITICAL';
+      pillText = '🚨 CRITICAL';
+      pillClass = 'badge-critical';
+      cardClass = 'card-critical';
+      hasCritical = true;
+    } else if (b.refMin !== undefined && val < b.refMin) {
+      flag = 'LOW';
+      pillText = '⬇ LOW';
+      pillClass = 'badge-low';
+      cardClass = 'card-low';
+      hasAbnormal = true;
+    } else if (b.refMax !== undefined && val > b.refMax) {
+      flag = 'HIGH';
+      pillText = '⬆ HIGH';
+      pillClass = 'badge-high';
+      cardClass = 'card-high';
+      hasAbnormal = true;
+    }
+
+    if (pill) {
+      pill.textContent = pillText;
+      pill.className = `biomarker-pill ${pillClass}`;
+    }
+    if (card) {
+      card.className = `biomarker-card ${cardClass}`;
+    }
+
+    parameters[b.key] = {
+      label: b.label,
+      value: val,
+      unit: b.unit,
+      referenceRange: b.help,
+      flag: flag
+    };
+  });
+
+  // Calculate overall summary
+  let overallStatus = 'NORMAL';
+  if (hasCritical) {
+    overallStatus = 'CRITICAL';
+  } else if (hasAbnormal) {
+    overallStatus = 'ABNORMAL';
+  } else if (filledCount === 0) {
+    overallStatus = 'PENDING';
+  }
+
+  if (bundleSummaryBadge && bundleSummaryText) {
+    bundleSummaryBadge.className = 'biomarker-summary-badge';
+    if (overallStatus === 'CRITICAL') {
+      bundleSummaryBadge.classList.add('badge-critical');
+      bundleSummaryText.textContent = 'CRITICAL FINDINGS';
+    } else if (overallStatus === 'ABNORMAL') {
+      bundleSummaryBadge.classList.add('badge-high');
+      bundleSummaryText.textContent = 'ABNORMAL FINDINGS';
+    } else if (overallStatus === 'NORMAL') {
+      bundleSummaryBadge.classList.add('badge-normal');
+      bundleSummaryText.textContent = 'ALL PARAMETERS NORMAL';
+    } else {
+      bundleSummaryBadge.classList.add('badge-normal');
+      bundleSummaryText.textContent = 'AWAITING INPUTS';
+    }
+  }
+
+  if (bundleCriticalAlert) {
+    if (hasCritical) {
+      bundleCriticalAlert.classList.remove('hidden');
+    } else {
+      bundleCriticalAlert.classList.add('hidden');
+    }
+  }
+
+  // Auto-suggest status in createStatus select
+  const statusSelect = document.getElementById('createStatus');
+  if (statusSelect) {
+    if (hasCritical) {
+      statusSelect.value = 'CRITICAL';
+    } else if (statusSelect.value === 'CRITICAL' && !hasCritical) {
+      statusSelect.value = 'REPORTED';
+    }
+  }
+
+  // Real-time synchronization to Result Data textarea
+  const resultDataTextarea = document.getElementById('createResultData');
+  if (resultDataTextarea && filledCount > 0) {
+    const payloadObject = {
+      bundle: bundle.name,
+      bundleCode: bundle.code,
+      overallStatus: overallStatus,
+      criticalAlert: hasCritical,
+      parameters: parameters,
+      evaluatedAt: new Date().toISOString()
+    };
+    resultDataTextarea.value = JSON.stringify(payloadObject, null, 2);
+  }
+}
+
+// Bundle selector change event
+if (bundleSelect) {
+  bundleSelect.addEventListener('change', (e) => {
+    renderBundle(e.target.value);
+  });
+}
+
+// ==========================================================================
 // Demo Data Filler & Format JSON
 // ==========================================================================
 if (demoFillBtn) {
   demoFillBtn.addEventListener('click', () => {
-    const randomId = 'LAB-' + Math.floor(100 + Math.random() * 900);
+    let selectedBundleKey = bundleSelect ? bundleSelect.value : '';
+    if (!selectedBundleKey || selectedBundleKey === 'CUSTOM') {
+      selectedBundleKey = 'CARDIAC';
+      if (bundleSelect) bundleSelect.value = 'CARDIAC';
+      renderBundle('CARDIAC');
+    }
+
+    const bundle = CLINICAL_BUNDLES[selectedBundleKey];
+    const randomId = 'LAB-RES-' + Math.floor(100 + Math.random() * 900);
     const resultIdInput = document.getElementById('createResultId');
     const patientIdInput = document.getElementById('createPatientId');
-    const testCodeInput = document.getElementById('createTestCode');
     const collectedAtInput = document.getElementById('createCollectedAt');
     const statusSelect = document.getElementById('createStatus');
-    const resultDataTextarea = document.getElementById('createResultData');
 
     if (resultIdInput) resultIdInput.value = randomId;
     if (patientIdInput) patientIdInput.value = 'PAT-001';
-    if (testCodeInput) testCodeInput.value = 'LIPID-PANEL';
-    if (statusSelect) statusSelect.value = 'REPORTED';
     if (collectedAtInput) {
       const now = new Date();
       now.setMinutes(now.getMinutes() - now.getTimezoneOffset());
       collectedAtInput.value = now.toISOString().slice(0, 16);
     }
-    if (resultDataTextarea) {
-      resultDataTextarea.value = JSON.stringify({
-        total_cholesterol: 192,
-        hdl: 56,
-        ldl: 110,
-        triglycerides: 130,
-        vldl: 26,
-        units: 'mg/dL',
-        risk_evaluation: 'LOW_BORDERLINE'
-      }, null, 2);
+
+    if (bundle) {
+      bundle.biomarkers.forEach((b) => {
+        const input = document.getElementById(`bio_${b.key}`);
+        if (input) input.value = b.demo;
+      });
+      evaluateBundleParameters();
     }
-    showToast(`Loaded sample clinical data for ${randomId}`);
+
+    if (statusSelect && statusSelect.value !== 'CRITICAL') {
+      statusSelect.value = 'REPORTED';
+    }
+
+    showToast(`Loaded clinical bundle demo for ${randomId}`);
   });
 }
 
@@ -390,7 +1045,7 @@ function renderRows(records, emptyMessage = 'No matching diagnostic records.') {
           <td style="color: var(--lab-text-muted); font-size: 0.78rem;">${formattedDate}</td>
           <td style="text-align: right;">
             <button type="button" class="row-action-btn inspect-btn" data-id="${escapeHtml(record.resultId || '')}">
-              Inspect Payload
+              Inspect Report
             </button>
           </td>
         `;
@@ -453,11 +1108,14 @@ if (statusFilters) {
 
 async function inspectRecord(resultId) {
   try {
-    showToast(`Resolving payload for ${resultId}...`);
+    showToast(`Resolving dossier for ${resultId}...`);
     const response = await apiRequest(`/api/records/${encodeURIComponent(resultId)}/resolve-data`);
     setOutput(`GET /api/records/${resultId}/resolve-data`, response);
-    showToast(`Resolved IPFS payload for ${resultId}`);
-    rawOutput.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    switchInspectorView('report');
+    showToast(`Loaded clinical dossier for ${resultId}`);
+    if (inspectorPanel) {
+      inspectorPanel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
   } catch (err) {
     showToast(err.message);
   }
@@ -528,6 +1186,10 @@ async function loadAllRecords() {
     if (statRecordsCount) statRecordsCount.textContent = String(records.length);
     applyFilters();
     setOutput('GET /api/records', response);
+    // Auto-inspect latest record if nothing is specifically selected yet
+    if (records.length > 0 && (!currentOutputPayload || Array.isArray(currentOutputPayload.result))) {
+      inspectRecord(records[0].resultId);
+    }
   } catch (error) {
     console.warn('[loadAllRecords error]:', error.message);
     renderRows([], 'Ledger synchronization in progress. Click Refresh Ledger or submit a new report.');
@@ -648,6 +1310,8 @@ if (createForm) {
       await loadAllRecords();
       createForm.reset();
       updateFileBadge();
+      if (bundleSelect) bundleSelect.value = '';
+      renderBundle('');
 
       showToast(`Committed ${payload.resultId} to Fabric Lab ledger`);
     } catch (err) {
@@ -749,7 +1413,13 @@ if (updateStatusForm) {
 if (clearOutputBtn) {
   clearOutputBtn.addEventListener('click', () => {
     currentOutputPayload = null;
-    rawOutput.innerHTML = '<span style="color: var(--lab-text-muted);">Awaiting transactions...</span>';
+    if (rawOutput) rawOutput.innerHTML = '<span style="color: var(--lab-text-muted);">Awaiting transactions...</span>';
+    if (dossierEmptyState) dossierEmptyState.classList.remove('hidden');
+    if (dossierContent) {
+      dossierContent.innerHTML = '';
+      dossierContent.classList.add('hidden');
+    }
+    showToast('Cleared inspector dossier');
   });
 }
 

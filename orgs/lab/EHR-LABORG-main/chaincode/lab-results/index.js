@@ -124,16 +124,12 @@ class LabResultsContract extends Contract {
   }
 
   async GetLabResultsByPatient(ctx, patientId) {
-    const query = {
-      selector: {
-        docType: 'labResult',
-        patientId,
-      },
-    };
-
-    const iterator = await ctx.stub.getQueryResult(JSON.stringify(query));
+    const iterator = await ctx.stub.getStateByRange('', '');
     const results = await this._collectIterator(iterator);
-    return JSON.stringify(results);
+    const filtered = results.filter(
+      (record) => record && record.docType === 'labResult' && record.patientId === patientId
+    );
+    return JSON.stringify(filtered);
   }
 
   async GetAllLabResults(ctx) {

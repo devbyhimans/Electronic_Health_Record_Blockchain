@@ -72,10 +72,7 @@ CC_PATH=""
 CC_VERSION="1.0"
 CC_SEQUENCE="1"
 INIT_REQUIRED=false
-
-# Endorsement policy — ANY one org peer can endorse
-# This matches our design: each function is endorsed by its designated peer only
-CC_POLICY="OR('HospitalMSP.peer','DiagnosticsMSP.peer','ProviderMSP.peer')"
+CC_POLICY=""
 
 while [[ "$#" -gt 0 ]]; do
   case $1 in
@@ -84,6 +81,7 @@ while [[ "$#" -gt 0 ]]; do
     --chaincode-path) CC_PATH="$2";      shift ;;
     --version)        CC_VERSION="$2";   shift ;;
     --sequence)       CC_SEQUENCE="$2";  shift ;;
+    --policy)         CC_POLICY="$2";    shift ;;
     --init-required)  INIT_REQUIRED=true ;;
     --help|-h)        usage ;;
     *)
@@ -93,6 +91,15 @@ while [[ "$#" -gt 0 ]]; do
   esac
   shift
 done
+
+# Endorsement policy — ANY one org peer on the channel can endorse
+if [ -z "$CC_POLICY" ]; then
+  if [ "$CHANNEL" = "insurancechannel" ] || [ "$CHANNEL" = "InsuranceChannel" ]; then
+    CC_POLICY="OR('HospitalMSP.peer','ProviderMSP.peer')"
+  else
+    CC_POLICY="OR('HospitalMSP.peer','DiagnosticsMSP.peer','ProviderMSP.peer')"
+  fi
+fi
 
 # ============================================================
 # VALIDATE

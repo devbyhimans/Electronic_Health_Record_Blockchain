@@ -64,9 +64,10 @@ docker network inspect ehr_network >/dev/null 2>&1 || docker network create ehr_
 PEER_MSP="${ORGS_DIR}/peerOrganizations/hospital.example.com/peers/peer0.hospital.example.com/msp"
 ORDERER_MSP="${ORGS_DIR}/ordererOrganizations/example.com/orderers/orderer.example.com/msp"
 
-# Prints "yes" when peer0.hospital has joined ehrchannel, "no" when it answers
+# Prints "yes" when peer0.hospital has joined the specified channel, "no" when it answers
 # but has not, and fails when the peer never answers.
 peer_on_channel() {
+  local target_channel="${1:-ehrchannel}"
   local out attempt
   for attempt in $(seq 1 20); do
     if out="$(FABRIC_CFG_PATH="${FABRIC_DIR}/configtx" CORE_PEER_TLS_ENABLED=true \
@@ -74,7 +75,7 @@ peer_on_channel() {
         CORE_PEER_TLS_ROOTCERT_FILE="${ORGS_DIR}/peerOrganizations/hospital.example.com/peers/peer0.hospital.example.com/tls/ca.crt" \
         CORE_PEER_MSPCONFIGPATH="${ORGS_DIR}/peerOrganizations/hospital.example.com/users/hospitaladmin/msp" \
         peer channel list 2>&1)"; then
-      if echo "${out}" | grep -qx "ehrchannel"; then echo yes; else echo no; fi
+      if echo "${out}" | grep -qx "${target_channel}"; then echo yes; else echo no; fi
       return 0
     fi
     sleep 3
@@ -93,7 +94,7 @@ if [[ -d "${PEER_MSP}" && -d "${ORDERER_MSP}" ]]; then
   docker compose -f "${FABRIC_COMPOSE}" up -d
   ok "CAs, orderer, 5 peers and IPFS node started"
 
-  JOINED="$(peer_on_channel)" || die "peer0.hospital is not answering. Check: docker logs docker-peer0.hospital.example.com-1 --tail 50"
+  JOINED="$(peer_on_channel ehrchannel)" || die "peer0.hospital is not answering. Check: docker logs docker-peer0.hospital.example.com-1 --tail 50"
   if [[ "${JOINED}" == "no" ]]; then
     # Identity files exist but this machine has no ledger for them (for example
     # the folder was copied from another computer, or Docker volumes were removed).
@@ -106,10 +107,18 @@ if [[ -d "${PEER_MSP}" && -d "${ORDERER_MSP}" ]]; then
     docker network inspect ehr_network >/dev/null 2>&1 || docker network create ehr_network >/dev/null
     build_network
     ok "Fabric network rebuilt"
+  else
+    # Check if insurancechannel exists on existing network; create and join peers if missing
+    JOINED_INS="$(peer_on_channel insurancechannel 2>/dev/null || echo no)"
+    if [[ "${JOINED_INS}" == "no" ]]; then
+      echo -e "  ${CYAN}Creating dedicated insurancechannel on existing network...${RESET}"
+      ( cd "${FABRIC_DIR}" && bash scripts/createChannel.sh --channel insurancechannel --orgs "1,3,4,5" )
+      ok "insurancechannel created and peers joined"
+    fi
   fi
 else
   step "1/5" "No Fabric identities found — creating the network from scratch"
-  note "This enrols every identity, starts peers/orderer, creates ehrchannel and sets anchor peers."
+  note "This enrols every identity, starts peers/orderer, creates ehrchannel + insurancechannel and sets anchor peers."
   bash "${ROOT_DIR}/scripts/reset-app-state.sh"
   docker network inspect ehr_network >/dev/null 2>&1 || docker network create ehr_network >/dev/null
   build_network
@@ -120,9 +129,10 @@ fi
 if [[ "${SKIP_CHAINCODE}" == true ]]; then
   step "2/5" "Chaincode check skipped (--skip-chaincode)"
 else
-  step "2/5" "Checking the ehr chaincode on ehrchannel"
-  bash "${FABRIC_DIR}/scripts/ensure-chaincode.sh"
-  ok "Chaincode is current"
+  step "2/5" "Checking the ehr chaincode on channels"
+  bash "${FABRIC_DIR}/scripts/ensure-chaincode.sh" --channel ehrchannel --name ehr
+  bash "${FABRIC_DIR}/scripts/ensure-chaincode.sh" --channel insurancechannel --name ehr
+  ok "Chaincode is current across ehrchannel and insurancechannel"
 fi
 
 # ── 3. Application services ──────────────────────────────────────────────────
@@ -157,6 +167,7 @@ CHECKS=(
   "Doctor API|http://localhost:4002/health"
   "Nurse/Pharmacist API|http://localhost:4003/health"
   "Lab/Claims API|http://localhost:4004/health"
+  "Insurance & TPA Claims Deck|http://localhost:4004/insurance/"
   "Patient API|http://localhost:4005/health"
   "DigiLocker service|http://localhost:4007/health"
   "Clinical AI agent|http://localhost:8000/health"
@@ -213,6 +224,7 @@ echo -e "
   Patient portal      http://localhost:5174/
   Pharmacy suite      http://localhost:5175/
   Lab control deck    http://localhost/lab/
+  Insurance & Claims  http://localhost/insurance/
   Dashboard           http://localhost/dashboard/
   IPFS gateway        http://localhost:8090/ipfs/<CID>
 

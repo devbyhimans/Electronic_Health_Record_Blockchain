@@ -2,14 +2,14 @@
 ## Attribute-Based Access Control (ABAC), State Machines, and Domain Separation across 13 Contracts
 
 [![Chaincode](https://img.shields.io/badge/Chaincode-Node.js%20Contract%20API-green.svg)](https://github.com/hyperledger/fabric-chaincode-node)
-[![Channel](https://img.shields.io/badge/Channel-ehrchannel-blue.svg)](https://hyperledger-fabric.readthedocs.io/)
+[![Channel](https://img.shields.io/badge/Channels-ehrchannel%20%7C%20insurancechannel-blue.svg)](https://hyperledger-fabric.readthedocs.io/)
 [![Consortium](https://img.shields.io/badge/Consortium-HospitalMSP%20%7C%20DiagnosticsMSP%20%7C%20ProviderMSP-orange.svg)](README.md)
 
 ---
 
 ## 🏛️ Smart Contract Architecture Overview
 
-The `ehr` chaincode package deployed on `ehrchannel` implements a **modular multi-contract architecture** composed of **13 specialized domain contracts**. Rather than managing all healthcare entities inside a single monolithic chaincode, CareGrid separates clinical concerns, organizational jurisdictions, and regulatory compliance into dedicated contracts.
+The `ehr` chaincode package is deployed across **two channels**: `ehrchannel` (clinical and laboratory consortium) and `insurancechannel` (confidential claims adjudication between `HospitalMSP` and `ProviderMSP`). It implements a **modular multi-contract architecture** composed of **13 specialized domain contracts**. Rather than managing all healthcare entities inside a single monolithic chaincode, CareGrid separates clinical concerns, organizational jurisdictions, and regulatory compliance into dedicated contracts.
 
 ```mermaid
 flowchart TD
@@ -116,13 +116,15 @@ flowchart TD
 * **Storage Key:** `LAB_<requestId>`
 
 ### 6. `ClaimsContract` (`lib/claimsContract.js`)
-* **Primary Scope:** Insurance policy adjudication, pre-authorization, and claims settlement across `ProviderMSP`.
-* **Access Rules:** `billing_clerk`, `hospitaladmin`, and insurance adjudicators under `ProviderMSP`.
+* **Primary Scope:** Insurance policy adjudication, selective disclosure IPFS packet anchoring, deductible/co-pay calculation, and claims settlement across `insurancechannel` between `HospitalMSP` and `ProviderMSP`.
+* **Access Rules:** `billingofficer` (hospital billing liaison), `claimsauditor` (medical necessity auditor), `insuranceofficer` (senior adjudicator), and `provideradmin`.
 * **Key Methods:**
-  * `submitClaim(ctx, claimId, patientId, visitId, amount, itemizedHash)`: Files an insurance reimbursement claim.
-  * `adjudicateClaim(ctx, claimId, status, approvedAmount, rejectionReason)`: Approves, partially approves, or denies claim.
-  * `queryClaimByPatient(ctx, patientId)`: Returns all insurance claims filed for a given patient.
-* **Storage Key:** `CLAIM_<claimId>`
+  * `SubmitClaim(ctx, visitId, claimId, claimAmount, visitCID, patientId, policyId)`: Files an insurance claim, anchors the Selective Disclosure IPFS packet CID (`claimCID`), and updates status to `CLAIM_SUBMITTED`.
+  * `AuditClaim(ctx, visitId, auditNotes, visitCID)`: Claims auditor records medical necessity findings against ICD-10 and CPT codes, transitioning state to `CLAIM_UNDER_AUDIT`.
+  * `ProcessClaim(ctx, visitId, decision, reason, visitCID, approvedAmount, copayAmount)`: Insurance officer executes adjudication (APPROVED / REJECTED / PARTIAL_APPROVAL), calculates patient co-pay (e.g. 15% patient / 85% insurer split), commits state, and emits the `ClaimSettled` event on the ledger.
+  * `GetClaim(ctx, id)`: Resolves full on-chain claim state and links to the off-chain selective disclosure packet.
+  * `GetAllClaims(ctx)`: Returns all claims on `insurancechannel` via range iterator.
+* **Storage Keys:** `CLAIM:<claimId>` and `VISIT:<visitId>` (claim state projection).
 
 ### 7. `EhrContract` (`lib/ehrContract.js`)
 * **Primary Scope:** Master anchor for longitudinal electronic health records and IPFS multihash verification.

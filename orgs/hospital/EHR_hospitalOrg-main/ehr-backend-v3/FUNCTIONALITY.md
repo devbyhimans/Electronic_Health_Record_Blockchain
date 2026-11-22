@@ -4,19 +4,22 @@
 
 ## System Overview
 
-A blockchain-based Electronic Health Record system built on Hyperledger Fabric 2.5.
-Three organizations share an immutable, tamper-proof ledger on a single channel (`ehrchannel`).
+A blockchain-based Electronic Health Record system built on Hyperledger Fabric 2.5 LTS.
+The network implements a **Dual-Channel Architecture**:
+1. `ehrchannel`: Tripartite consortium channel shared across **HospitalMSP**, **DiagnosticsMSP**, and **ProviderMSP** for patient registrations, clinical encounters, multi-actor laboratory workflows, and medication dispensing.
+2. `insurancechannel`: Confidential dual-organization channel strictly between **HospitalMSP** and **ProviderMSP** (excluding DiagnosticsMSP) for zero-PHI claims adjudication, patient co-pay calculations, and automated digital settlement.
+
 Every action is role-restricted, cryptographically signed, and permanently recorded.
 
 ---
 
-## Organizations & Peers
+## Organizations, Peers & Channel Membership
 
-| Org | MSP ID | Peers | Roles |
-|-----|--------|-------|-------|
-| Hospital | HospitalMSP | peer0 :7051, peer1 :9051, peer2 :10051 | receptionist, admin, doctor, nurse, pharmacist, medrecordofficer |
-| Diagnostics | DiagnosticsMSP | peer0.diagnostic :8051 | labreceptionist, labtechnician, radiologist, labsupervisor, labadmin |
-| Provider | ProviderMSP | peer0.provider :11051 | billingofficer, claimsauditor, insuranceofficer, provideradmin |
+| Org | MSP ID | Peers | Channels | Roles |
+|-----|--------|-------|----------|-------|
+| Hospital | HospitalMSP | peer0 :7051, peer1 :9051, peer2 :10051 | `ehrchannel`, `insurancechannel` | receptionist, admin, doctor, nurse, pharmacist, medrecordofficer, billingofficer |
+| Diagnostics | DiagnosticsMSP | peer0.diagnostic :8051 | `ehrchannel` | labreceptionist, labtechnician, radiologist, labsupervisor, labadmin |
+| Provider | ProviderMSP | peer0.provider :11051 | `ehrchannel`, `insurancechannel` | claimsauditor, insuranceofficer, provideradmin |
 
 ---
 
@@ -192,13 +195,15 @@ Note: `DischargePatient` also allowed from `RECORD_FINALIZED` (no claim needed).
 
 ---
 
-### ClaimsContract (3 functions)
+### ClaimsContract (5 functions on insurancechannel)
 
 | Function | Args | Role | What it does |
 |----------|------|------|-------------|
-| `SubmitClaim` | visitId, claimId, claimAmount | billingofficer | Submits insurance claim. Visit must be RECORD_FINALIZED. Amount must be positive. |
-| `AuditClaim` | visitId, auditNotes | claimsauditor | Moves claim to audit stage. Notes required. |
-| `ProcessClaim` | visitId, decision, reason | insuranceofficer | Approves or rejects claim. decision = APPROVED or REJECTED. Rejection requires reason. |
+| `SubmitClaim` | visitId, claimId, claimAmount, visitCID, patientId, policyId | billingofficer | Submits claim to `insurancechannel`. Anchors Selective Disclosure IPFS packet CID (`claimCID`). Status: `CLAIM_SUBMITTED`. |
+| `AuditClaim` | visitId, auditNotes, visitCID | claimsauditor | Reviews medical necessity against ICD-10 diagnostic & CPT codes. Notes required. Status: `CLAIM_UNDER_AUDIT`. |
+| `ProcessClaim` | visitId, decision, reason, visitCID, approvedAmount, copayAmount | insuranceofficer | Final policy adjudication (APPROVED / REJECTED / PARTIAL_APPROVAL). Auto-calculates co-pay (e.g. 15% patient / 85% insurer split). Emits `ClaimSettled` event. Status: `CLAIM_APPROVED` or `CLAIM_REJECTED`. |
+| `GetClaim` | id (visitId or claimId) | any provider role | Resolves claim state and linked `claimCID` / `visitCID` IPFS selective disclosure packet. |
+| `GetAllClaims` | (none) | any provider role | Range query (`VISIT:` through `VISIT:\uffff`) returning all active and settled claims on `insurancechannel`. |
 
 ---
 
@@ -264,12 +269,16 @@ GET    /records/visits/:id/history              → GetVisitHistory
 PUT    /records/visits/:id/finalize             → FinalizeRecord
 ```
 
-### extorg-api (:3004) — lab (DiagnosticsMSP) + provider (ProviderMSP)
+### extorg-api (:4004 / :3004) — lab (DiagnosticsMSP) + provider (ProviderMSP) & Insurance Claims Deck
 
 ```
-POST   /auth/login
-GET    /auth/me
+POST   /auth/login                                       → JWT token (supports provider roles: billingofficer, claimsauditor, insuranceofficer, provideradmin)
+GET    /auth/me                                          → current user info
 
+# Frontend Routes
+GET    /insurance/                                       → Dedicated Glassmorphic Insurance & TPA Claims Portal (SPA)
+
+# DiagnosticsMSP Workflows (ehrchannel)
 GET    /lab/visits/:id                                    → GetVisit
 GET    /lab/visits/:id/request/:reqId                    → GetLabRequest
 PUT    /lab/visits/:id/request/:reqId/acknowledge        → AcknowledgeLabRequest
@@ -277,39 +286,47 @@ PUT    /lab/visits/:id/request/:reqId/submit             → SubmitLabResult
 PUT    /lab/visits/:id/request/:reqId/approve            → ApproveLabResult
 PUT    /lab/visits/:id/request/:reqId/return             → LabResultsBackToDoctor
 
-GET    /claims/visits/:id                                → GetVisit
+# ProviderMSP Claims Workflows (insurancechannel)
+GET    /claims                                           → GetAllClaims (returns full array of claims on insurancechannel)
+GET    /claims/:id                                       → GetClaim by claimId or visitId (evaluates on insurancechannel, fetches selective disclosure IPFS packet)
+GET    /claims/visits/:id                                → GetVisit from ehrchannel combined with insurance claim projection
 GET    /claims/visits/:id/history                        → GetVisitHistory
-POST   /claims/visits/:id/submit                         → SubmitClaim
-PUT    /claims/visits/:id/audit                          → AuditClaim
-PUT    /claims/visits/:id/process                        → ProcessClaim
+POST   /claims/visits/:id/submit                         → SubmitClaim (generates Selective Disclosure IPFS packet, strips psychotherapy & genetic data, submits to insurancechannel)
+PUT    /claims/visits/:id/audit                          → AuditClaim (records medical necessity review on insurancechannel)
+PUT    /claims/visits/:id/process                        → ProcessClaim (records adjudication, co-pay split, emits ClaimSettled event on insurancechannel)
 ```
 
 ---
 
 ## Role-to-Function Matrix
 
-| Role | Peer | Can invoke |
-|------|------|-----------|
-| receptionist | peer0 | RegisterPatient, OpenVisit, AssignDoctor, AssignNurse, UpdatePatientInfo |
-| admin (hospitaladmin) | peer0 | same as receptionist + DischargePatient |
-| doctor | peer1 | UpdateDiagnosisNotes, UpdatePrescription, ForwardToNurse, ForwardToLab, FinalizeVisit, AssignNurse |
-| nurse | peer2 | RecordVitals, AddCareNote, ForwardToDoctor |
-| pharmacist | peer2 | DispenseMedication |
-| medrecordofficer | peer2 | FinalizeRecord |
-| labreceptionist | peer0.diagnostic | AcknowledgeLabRequest |
-| labtechnician | peer0.diagnostic | SubmitLabResult |
-| radiologist | peer0.diagnostic | SubmitLabResult |
-| labsupervisor | peer0.diagnostic | ApproveLabResult, LabResultsBackToDoctor |
-| labadmin | peer0.diagnostic | AcknowledgeLabRequest, SubmitLabResult, ApproveLabResult, LabResultsBackToDoctor |
-| billingofficer | peer0.provider | SubmitClaim |
-| claimsauditor | peer0.provider | AuditClaim |
-| insuranceofficer | peer0.provider | ProcessClaim |
+| Role | Peer | Channel | Can invoke |
+|------|------|---------|-----------|
+| receptionist | peer0 | `ehrchannel` | RegisterPatient, OpenVisit, AssignDoctor, AssignNurse, UpdatePatientInfo |
+| admin (hospitaladmin) | peer0 | `ehrchannel` | same as receptionist + DischargePatient |
+| doctor | peer1 | `ehrchannel` | UpdateDiagnosisNotes, UpdatePrescription, ForwardToNurse, ForwardToLab, FinalizeVisit, AssignNurse |
+| nurse | peer2 | `ehrchannel` | RecordVitals, AddCareNote, ForwardToDoctor |
+| pharmacist | peer2 | `ehrchannel` | DispenseMedication |
+| medrecordofficer | peer2 | `ehrchannel` | FinalizeRecord |
+| labreceptionist | peer0.diagnostic | `ehrchannel` | AcknowledgeLabRequest |
+| labtechnician | peer0.diagnostic | `ehrchannel` | SubmitLabResult |
+| radiologist | peer0.diagnostic | `ehrchannel` | SubmitLabResult |
+| labsupervisor | peer0.diagnostic | `ehrchannel` | ApproveLabResult, LabResultsBackToDoctor |
+| labadmin | peer0.diagnostic | `ehrchannel` | AcknowledgeLabRequest, SubmitLabResult, ApproveLabResult, LabResultsBackToDoctor |
+| billingofficer | peer0 / peer0.provider | `insurancechannel` | SubmitClaim (with Selective Disclosure IPFS packet) |
+| claimsauditor | peer0.provider | `insurancechannel` | AuditClaim |
+| insuranceofficer | peer0.provider | `insurancechannel` | ProcessClaim (emits `ClaimSettled`) |
+| provideradmin | peer0.provider | `insurancechannel` | Governance, audit logs, claim verification |
 
-All roles can read: GetVisit, GetPatient, GetVisitHistory, GetPatientHistory, GetCurrentPrescription, GetLabRequest, PatientExists.
+All roles can read: GetVisit, GetPatient, GetVisitHistory, GetPatientHistory, GetCurrentPrescription, GetLabRequest, PatientExists, GetClaim.
 
 ---
 
 ## Key Design Properties
+
+**Dual-channel privacy partitioning** — Clinical workflows (`ehrchannel`) are isolated from claims, policy adjudication, and financial negotiations (`insurancechannel`). `DiagnosticsMSP` is physically and cryptographically excluded from `insurancechannel`.
+
+**Selective Disclosure IPFS packets** — When a claim is submitted, sensitive clinical PHI (such as psychotherapy notes and genetic markers) is automatically filtered out into an immutable `SelectiveDisclosureClaimPacket` pinned to IPFS, ensuring full compliance with HIPAA and India DPDP Act 2023.
 
 **Visit-based model** — A patient is a permanent record. Each hospital visit is a separate ledger entry. One patient can have unlimited visits (V1, V2, V3...). This correctly models repeat visits, follow-ups, and long-term care.
 
@@ -334,7 +351,7 @@ All roles can read: GetVisit, GetPatient, GetVisitHistory, GetPatientHistory, Ge
 ## What the System Does NOT Yet Have
 
 1. **CouchDB indexes** — GetPatientsByStatus-style rich queries need an index definition (`META-INF/statedb/couchdb/indexes/`) or they will warn under load.
-2. **Chaincode events** — No `stub.setEvent()` calls. Event-driven notifications (nurse gets notified when lab results are ready) require adding events to the chaincode.
-3. **Private data collections** — Lab results are currently on the shared ledger visible to all orgs. If Diagnostics wants to keep results private until approved, private data collections are needed.
+2. **Chaincode events (clinical channel)** — `stub.setEvent()` is currently implemented for `ClaimSettled` on `insurancechannel`; event subscriptions for clinical laboratory result alerts on `ehrchannel` remain a roadmap item.
+3. **Private data collections within ehrchannel** — While cross-org financial isolation is solved via `insurancechannel`, intra-channel diagnostic hiding prior to supervisor approval uses status-based ledger gating rather than PDC.
 4. **Refresh token rotation / revocation** — JWT refresh tokens are stateless. There is no blacklist for revoked tokens.
 5. **Multi-VM deployment** — All peers currently run on localhost. Peer addresses in `.env` files need updating for distributed deployment.

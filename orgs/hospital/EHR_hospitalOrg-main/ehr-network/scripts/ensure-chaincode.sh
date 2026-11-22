@@ -21,7 +21,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BASE_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 CC_SRC="$(cd "${BASE_DIR}/../ehr-chaincode-v3" && pwd)"
 STATE_DIR="${BASE_DIR}/.generated"
-STATE_FILE="${STATE_DIR}/${CC_NAME}-chaincode.sha256"
+STATE_FILE="${STATE_DIR}/${CHANNEL}-${CC_NAME}-chaincode.sha256"
+if [[ "${CHANNEL}" == "ehrchannel" && ! -f "${STATE_FILE}" && -f "${STATE_DIR}/${CC_NAME}-chaincode.sha256" ]]; then
+  STATE_FILE="${STATE_DIR}/${CC_NAME}-chaincode.sha256"
+fi
 ORGS="${BASE_DIR}/organizations"
 
 source "${SCRIPT_DIR}/fabric-bin.sh"
@@ -64,7 +67,7 @@ SEQ="$(committed_sequence)"
 HAVE="$(cat "${STATE_FILE}" 2>/dev/null || true)"
 
 if [[ "${SEQ}" != "0" && "${HAVE}" == "${WANT}" && "${FORCE}" == false ]]; then
-  echo "[chaincode] ${CC_NAME} is committed at sequence ${SEQ} and matches the source. Nothing to do."
+  echo "[chaincode] ${CC_NAME} is committed at sequence ${SEQ} on ${CHANNEL} and matches the source. Nothing to do."
   exit 0
 fi
 
@@ -87,4 +90,4 @@ if [[ "${NOW}" != "${NEXT}" ]]; then
 fi
 mkdir -p "${STATE_DIR}"
 echo "${WANT}" > "${STATE_FILE}"
-echo "[chaincode] ${CC_NAME} committed at sequence ${NEXT}."
+echo "[chaincode] ${CC_NAME} committed on ${CHANNEL} at sequence ${NEXT}."

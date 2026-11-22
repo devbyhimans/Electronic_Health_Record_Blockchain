@@ -34,14 +34,7 @@ export FABRIC_CFG_PATH="$NETWORK_DIR/configtx"
 export CORE_PEER_TLS_ENABLED=true
 
 get_height() {
-  # Fast path: query dashboard-api health (0ms, non-blocking HTTP)
-  local H=$(curl -s --max-time 1 http://localhost:4010/health 2>/dev/null | grep -o '"currentHeight":"[0-9]*"' | grep -o '[0-9]*')
-  if [ -n "$H" ] && [ "$H" -gt 0 ] 2>/dev/null; then
-    echo "$H"
-    return 0
-  fi
-
-  # Fallback: direct peer CLI query
+  # Direct peer CLI query for exact real-time block height
   CORE_PEER_LOCALMSPID=HospitalMSP \
   CORE_PEER_ADDRESS=localhost:7051 \
   CORE_PEER_TLS_ROOTCERT_FILE="$P0_HOSP_TLS" \
@@ -55,18 +48,18 @@ get_height() {
 watch_mode() {
   local LAST_HEIGHT=$(get_height)
   if [ -z "$LAST_HEIGHT" ]; then
-    echo -e "${RED}[ERROR] Cannot connect to peer0.hospital.example.com at localhost:7051.${NC}"
+    echo -e "${RED}[ERROR] Cannot connect to peer0.hospital.example.com on channel ${CHANNEL}.${NC}"
     exit 1
   fi
 
   echo ""
   echo -e "${CYAN}╔══════════════════════════════════════════════════════════════════════╗${NC}"
   echo -e "${CYAN}║${WHITE}${BOLD}      CAREGRID LIVE LEDGER MONITOR — LISTENING FOR TRANSACTIONS        ${CYAN}║${NC}"
-  echo -e "${CYAN}║${DIM}   Channel: ehrchannel  |  Watching peer0.hospital.example.com:7051   ${CYAN}║${NC}"
+  echo -e "${CYAN}║${DIM}   Channel: $(printf '%-12s' "$CHANNEL") | Watching peer0.hospital.example.com:7051   ${CYAN}║${NC}"
   echo -e "${CYAN}╚══════════════════════════════════════════════════════════════════════╝${NC}"
   echo ""
   echo -e "  ${GREEN}●${NC} ${BOLD}Live listener ACTIVE.${NC} Current Block Height: ${WHITE}${BOLD}${LAST_HEIGHT} blocks${NC}"
-  echo -e "  ${DIM}Perform ANY action in the Hospital Portal, Doctor Portal, Lab, or Pharmacy...${NC}"
+  echo -e "  ${DIM}Perform ANY action in the Hospital Portal, Doctor Portal, Lab, or Insurance Deck...${NC}"
   echo -e "  ${DIM}(Press Ctrl+C at any time to stop monitoring)${NC}"
   echo ""
 
@@ -129,8 +122,16 @@ watch_mode() {
   done
 }
 
-# Check if user requested watch mode
-if [ "$1" = "--watch" ] || [ "$1" = "-w" ]; then
+WATCH_MODE=false
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --watch|-w)   WATCH_MODE=true; shift ;;
+    --channel|-c) CHANNEL="$2"; shift 2 ;;
+    *)            shift ;;
+  esac
+done
+
+if [ "$WATCH_MODE" = true ]; then
   watch_mode
   exit 0
 fi
@@ -141,13 +142,13 @@ fi
 echo ""
 echo -e "${BLUE}╔══════════════════════════════════════════════════════════════════════╗${NC}"
 echo -e "${BLUE}║${WHITE}${BOLD}        CAREGRID BLOCKCHAIN — LIVE VERIFICATION DEMONSTRATION         ${BLUE}║${NC}"
-echo -e "${BLUE}║${DIM}   Channel: ehrchannel  |  Engine: Hyperledger Fabric 2.5 LTS (Raft)  ${BLUE}║${NC}"
+echo -e "${BLUE}║${DIM}   Channel: $(printf '%-12s' "$CHANNEL") | Engine: Hyperledger Fabric 2.5 LTS (Raft)  ${BLUE}║${NC}"
 echo -e "${BLUE}╚══════════════════════════════════════════════════════════════════════╝${NC}"
 echo ""
 
 INITIAL_HEIGHT=$(get_height)
 if [ -z "$INITIAL_HEIGHT" ]; then
-  echo -e "${RED}[ERROR] Cannot connect to peer0.hospital.example.com at localhost:7051.${NC}"
+  echo -e "${RED}[ERROR] Cannot connect to peer0.hospital.example.com on channel ${CHANNEL}.${NC}"
   exit 1
 fi
 
@@ -255,7 +256,7 @@ echo -e "${GREEN}✓ UNDENIABLE PROOF: Block Height increased by +${HEIGHT_DIFF}
 echo -e "${GREEN}══════════════════════════════════════════════════════════════════════${NC}"
 echo ""
 echo -e "${YELLOW}💡 TIP:${NC} To keep this terminal open and automatically stream frontend transactions live:"
-echo -e "        ${WHITE}${BOLD}bash demo_professor_proof.sh --watch${NC}"
+echo -e "        ${WHITE}${BOLD}bash demo_professor_proof.sh --watch --channel ${CHANNEL}${NC}"
 echo ""
 
 rm -f "${TMP_BLOCK}.pb" "${TMP_BLOCK}.json"

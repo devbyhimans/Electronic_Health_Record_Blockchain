@@ -4,9 +4,10 @@ require('dotenv').config();
 process.env.SERVICE_NAME = 'extorg-api';
 
 const express   = require('express');
-const cors    = require('cors');
+const cors      = require('cors');
 const helmet    = require('helmet');
 const morgan    = require('morgan');
+const path      = require('path');
 const rateLimit = require('express-rate-limit');
 
 const logger          = require('./config/logger');
@@ -21,12 +22,16 @@ const claimsRoutes = require('./routes/claims');
 const app  = express();
 const PORT = process.env.PORT || 4004;
 
-app.use(cors({ origin: '*', credentials: true }))
-app.use(helmet({ crossOriginResourcePolicy: false }));
+app.use(cors({ origin: '*', credentials: true }));
+app.use(helmet({ crossOriginResourcePolicy: false, contentSecurityPolicy: false }));
 // Lab report attachments arrive as base64 (3 MB file ≈ 4 MB of JSON).
 app.use('/lab/visits/:id/request/:reqId/attachments', express.json({ limit: '6mb' }));
 app.use(express.json({ limit: '1mb' }));
 app.use(morgan('combined', { stream: { write: m => logger.http(m.trim()) } }));
+
+// Serve static Insurance & TPA Claims Deck frontend
+app.use('/insurance', express.static(path.join(__dirname, '../public')));
+app.get('/insurance', (req, res) => res.redirect('/insurance/'));
 
 app.get('/health', (req, res) => res.json({
   success: true,

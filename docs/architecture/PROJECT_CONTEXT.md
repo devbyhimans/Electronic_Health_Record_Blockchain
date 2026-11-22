@@ -6,16 +6,16 @@ a network built from scratch on WSL2; `STATUS.md` lists what was not exercised a
 
 ## 1. Architecture
 
-One Fabric network, one channel (`ehrchannel`), one chaincode (`ehr`, thirteen contracts), Kubo IPFS for
+One Fabric network, **two channels** (`ehrchannel` for clinical/lab/pharmacy consortium workflows; `insurancechannel` strictly between HospitalMSP and ProviderMSP for confidential zero-PHI claims adjudication and settlement), chaincode `ehr` (thirteen contracts deployed across both channels), Kubo IPFS for
 off-chain content, Express gateways per peer/role, React portals, an nginx hub on port 80.
 
 | Service (compose name) | Port | Stack | Talks to | Purpose |
 | --- | --- | --- | --- | --- |
-| `nginx` | 80 | nginx | all below | Hub page (`nginx/hub`) and path routing (`/api/hospital/peer0|peer1|peer2|extorg|ext|patient/`, `/api/dashboard/`, `/api/pharmacy/`, `/api/lab/`, `/ai-agent/`, `/dashboard/`, `/lab/`) |
+| `nginx` | 80 | nginx | all below | Hub page (`nginx/hub`) and path routing (`/api/hospital/peer0|peer1|peer2|extorg|ext|patient/`, `/api/dashboard/`, `/api/pharmacy/`, `/api/lab/`, `/api/insurance/`, `/ai-agent/`, `/dashboard/`, `/lab/`, `/insurance/`) |
 | `h-peer0-api` | 4001 | Express | peer0.hospital, ipfs-service, Gemini | Receptionist/admin: patients, visits, staff users, symptom intake, timeline; publishes the code template at start |
 | `h-peer1-api` | 4002 | Express | peer1.hospital, ipfs-service | Doctor: diagnosis, prescription, forward to nurse/lab, disease code, timeline, finalize, EHR |
 | `h-peer2-api` | 4003 | Express | peer2.hospital, ipfs-service | Nurse, pharmacist (dispense), medical-records officer; login for pharmacy accounts |
-| `h-extorg-api` | 4004 | Express | peer0.diagnostic, peer0.provider, ipfs-service | Lab workflow (worklist, results, attachments, verify/reject) and insurance claims |
+| `h-extorg-api` | 4004 | Express + Static UI | peer0.diagnostic (ehrchannel), peer0.provider (ehrchannel + insurancechannel), ipfs-service | Lab workflow (worklist, results, attachments, verify/reject), multi-channel claims router (`ehrchannel` + `insurancechannel`), and dedicated Insurance & TPA Claims Deck frontend (`/insurance/`) |
 | `h-patient-api` | 4005 | Express + SQLite | peer0.hospital, ipfs-service | Patient sign-up/login, profile, EHR, visits, timeline, consent, OCR, signatures |
 | `h-ipfs-service` | 4006 | Express | Kubo `ipfs.ehr.local:5001` | Pin/fetch; encrypts JSON documents (AES-256-GCM); guarded by `X-IPFS-Key`; reports timing to the dashboard |
 | `h-digilocker-service` | 4007 | Express | peer0.hospital, ipfs-service | DigiLocker vault (sandbox provider by default) |
@@ -55,8 +55,12 @@ enrols the dashboard's read-only identity. The script ends when all health check
 ## 2. Fabric network
 
 - Orgs: `HospitalMSP` (3 peers), `DiagnosticsMSP` (1 peer), `ProviderMSP` (1 peer), `OrdererMSP` (1 Raft orderer).
-- Channel: `ehrchannel`.
-- Chaincode `ehr` (Node, `ehr-chaincode-v3`), endorsement policy `OR('HospitalMSP.peer','DiagnosticsMSP.peer','ProviderMSP.peer')` — any single org endorses.
+- Channels:
+  - `ehrchannel`: joined by `HospitalMSP` (`peer0:7051`, `peer1:9051`, `peer2:10051`), `DiagnosticsMSP` (`peer0.diagnostic:8051`), and `ProviderMSP` (`peer0.provider:11051`). Used for patient encounters, clinical documentation, laboratory orders/reports, and pharmacy medication dispensing.
+  - `insurancechannel`: joined exclusively by `HospitalMSP` (all 3 peers) and `ProviderMSP` (`peer0.provider:11051`). `DiagnosticsMSP` is excluded at both network and cryptographic levels, ensuring confidential zero-PHI claims adjudication, patient co-pay settlement, and billing reconciliation between hospital and insurer.
+- Chaincode `ehr` (Node, `ehr-chaincode-v3`), deployed across both channels:
+  - On `ehrchannel`: v3.1, endorsement policy `OR('HospitalMSP.peer','DiagnosticsMSP.peer','ProviderMSP.peer')` — any single org endorses.
+  - On `insurancechannel`: v1.1 Sequence 2, endorsement policy `OR('HospitalMSP.peer','ProviderMSP.peer')`.
 - Role comes from the `role` attribute in the caller's X.509 certificate (`lib/accessControl.js`). `role=admin` is scoped by MSP: hospital `admin`, diagnostics `labadmin`, provider `provideradmin`.
 - All timestamps come from the transaction (`getTxTimestamp`), not the peer's clock.
 - The gateways pick the Fabric identity by role, not by person; the username travels as data.
@@ -96,7 +100,10 @@ enrols the dashboard's read-only identity. The script ends when all health check
 | | UpdateDiseaseCode(patientId, newCode, name, reason, visitId) | doctor; a change needs a reason |
 | | GetTemplate, GetDiseaseCode | **(checks not traced)** |
 | StatsContract | GetStats | admin, observer (counts only) |
-| ClaimsContract | SubmitClaim / AuditClaim / ProcessClaim | billingofficer / claimsauditor / insuranceofficer |
+| ClaimsContract | SubmitClaim(visitId, claimId, amount, CID, patientId, policyId) | billingofficer (on `insurancechannel`) |
+| | AuditClaim(visitId, auditNotes, CID) | claimsauditor (on `insurancechannel`) |
+| | ProcessClaim(visitId, decision, reason, CID, approvedAmount, copayAmount) | insuranceofficer (on `insurancechannel`; emits `ClaimSettled` event) |
+| | GetClaim(id), GetAllClaims() | billingofficer, claimsauditor, insuranceofficer, provideradmin |
 | EhrContract | InitEHR | receptionist, admin |
 | | UpdateEHRCID | doctor, nurse (with patient grant), admin, patientService |
 | | GetCurrentCID, GetEHRCIDHistory, GetEHRRecord, GetEHRBlockHistory | read-access check **(not traced)** |
@@ -133,7 +140,7 @@ Staff accounts are in `ehr-backend-v3/shared/users.json` (bcrypt hashes). Demo p
 | | labtechnician, radiologist | Enter results | Hospital portal: Lab worklist |
 | | labsupervisor | Verify and sign, or reject with a reason | Hospital portal: Lab worklist |
 | | labadmin | All of the above | Hospital portal: Lab worklist |
-| Provider | billingofficer, claimsauditor, insuranceofficer, provideradmin | Submit, audit, decide claims | **API only (`extorg-api /claims`), no page** |
+| Provider | billingofficer, claimsauditor, insuranceofficer, provideradmin | Submit, audit, decide and settle claims via `insurancechannel` with selective disclosure IPFS packets | Insurance & TPA Claims Deck (`/insurance/` / :4004) with role authentication gate and separate workspaces |
 | Dashboard | observer (`dashboardobserver`) | Read blocks and counts | Used by dashboard-api only |
 | Patient | patient (SQLite account; on-chain via `patientService`) | Profile, EHR, visits, timeline, consent, DigiLocker, signature checks | Patient portal |
 
@@ -156,6 +163,8 @@ Staff (manager).
 **Lab deck** (`/lab/`, static page served by `l-node-gateway`): sign-in form, then record list, report upload,
 AI analysis, agent run with human approval, integrity check. Its ledger calls fail (see section 2).
 
+**Insurance & TPA Claims Deck** (`/insurance/`, static SPA served by `h-extorg-api` at `:4004` and proxied via Nginx at `http://localhost/insurance/`): secure Login gate with role selection (`billingofficer`, `claimsauditor`, `insuranceofficer`), role-segregated workspaces, claims queue with live status badges (`SUBMITTED`, `UNDER_AUDIT`, `APPROVED`, `REJECTED`), a 3-stage Cryptographic Provenance Stepper (`1. IPFS Ingest & Redaction` → `2. Medical Necessity Audit` → `3. Dual-Channel Ledger Settlement`), a Digital Explanation of Benefits (EOB) / Settlement Certificate with print view, and a collapsible raw ledger state drawer.
+
 **Dashboard** (`/dashboard/`): Overview, Network, Agents, Transactions, Analytics, Explorer, Security, IPFS,
 Logs, Alerts. Analytics and Explorer read `/analytics/summary` and `/explorer/...`; the rest read the
 aggregation routes and the `/stream` WebSocket.
@@ -175,7 +184,7 @@ aggregation routes and the `/stream` WebSocket.
 The symptom agent is the only part that calls a language model. It tries `GEMINI_MODEL`, then
 `GEMINI_FALLBACK_MODELS` when the API answers 429/500/503 or times out, and records which model answered. With
 no key or no answer it returns status UNAVAILABLE with the reason and no clinical content; registration still
-completes with the template match.
+compleches with the template match.
 
 `clinical-ai-agent` is rule and keyword matching over bundled JSON, not a model. The lab deck's clinical step
 calls an endpoint that only `clinical-decision-support` serves, so it reports AI as unavailable.
@@ -190,6 +199,7 @@ calls an endpoint that only `clinical-decision-support` serves, so it reports AI
 6. **Lab** — doctor orders (`ForwardToLab` creates `LABREQ:<visitId>-L<n>`) → lab accepts → technician submits a structured report (its SHA-256 goes on the ledger) → supervisor verifies against that hash, or rejects with a reason → visit returns to the doctor.
 7. **Finalize and dispense** — doctor finalizes; pharmacist dispenses through peer2-api (`ClinicalContract:DispenseMedication`).
 8. **Reading back** — the timeline (`shared/timeline.js`) lists the DID's entries and fetches any document by its sequence number; the patient's copy hides lab values that are not yet verified.
+9. **Insurance claims adjudication & settlement** — billing officer in `/insurance/` builds a Selective Disclosure IPFS Packet (stripping psychotherapy notes, genetic markers, and unconsented PHI under DPDP Act / HIPAA) → `POST /claims/visits/:id/submit` invokes `SubmitClaim` on `insurancechannel` → claims auditor validates medical necessity and ICD-10 diagnostic codes via `AuditClaim` → insurance officer calculates deductible/co-pay (e.g. 15% co-pay, 85% approved payout) and executes `ProcessClaim` → Fabric peer commits settlement to `insurancechannel` and emits `ClaimSettled` event → digital EOB certificate and cryptographic audit trail are generated.
 
 Every gateway wraps its contract object so each submit reports its submit and commit times to the dashboard.
 
@@ -197,8 +207,9 @@ Every gateway wraps its contract object so each submit reports its submit and co
 
 | Store | Contents |
 | --- | --- |
-| Ledger (`ehr`) | `PATIENT:<id>` — DID, profile CID and hash, visit IDs, EHR CID; **no name, age, contact or address**. `DID:` / `DIDIDX:` / `DIDCID:<did>:<seq>` — the identifier and its numbered CID entries. `VISIT:<id>` — status, assigned staff, current CID, CID history. `LABREQ:<id>` — status, who did each step and when, report hash. Disease code record per patient — current code and name **in plain form**, full history. Code template pointer (CID, version, hash). `EHR:<id>` CID index; `ACCESS:<id>` grants, requests, audit log; FHIR anchors (hashes + CID); DigiLocker anchors; claims. |
-| IPFS | Profile, EHR, visit, symptom-analysis and FHIR documents — encrypted JSON (AES-256-GCM, key in `.env`). ICD-10 template. Lab attachments and OCR uploads — **not encrypted**. DigiLocker documents (encrypted by that service). Pharmacy bill documents — **not encrypted**, pinned straight to Kubo. |
+| Ledger (`ehr` on `ehrchannel`) | `PATIENT:<id>` — DID, profile CID and hash, visit IDs, EHR CID; **no name, age, contact or address**. `DID:` / `DIDIDX:` / `DIDCID:<did>:<seq>` — the identifier and its numbered CID entries. `VISIT:<id>` — status, assigned staff, current CID, CID history. `LABREQ:<id>` — status, who did each step and when, report hash. Disease code record per patient — current code and name **in plain form**, full history. Code template pointer (CID, version, hash). `EHR:<id>` CID index; `ACCESS:<id>` grants, requests, audit log; FHIR anchors (hashes + CID); DigiLocker anchors. |
+| Ledger (`ehr` on `insurancechannel`) | `CLAIM:<claimId>` — pointer linking claim to visit and financial summary. `VISIT:<visitId>` — isolated claim projection with status (`CLAIM_SUBMITTED`, `CLAIM_UNDER_AUDIT`, `CLAIM_APPROVED`, `CLAIM_REJECTED`), selective disclosure IPFS packet CID (`claimCID`), itemized charges, approved payout, co-pay split, audit notes, and settlement timestamps. |
+| IPFS | Profile, EHR, visit, symptom-analysis and FHIR documents — encrypted JSON (AES-256-GCM, key in `.env`). ICD-10 template. Lab attachments and OCR uploads — **not encrypted**. DigiLocker documents (encrypted by that service). Pharmacy bill documents — **not encrypted**, pinned straight to Kubo. **Selective Disclosure Claim Packets** — sanitized non-PHI JSON packets (`docType: SelectiveDisclosureClaimPacket`) containing only insurance-admissible ICD-10/CPT codes and billed services. |
 | SQLite (`patient-api/data/patients.db`) | Patient portal accounts. |
 | Files | `shared/users.json` staff accounts; dashboard event store and block checkpoint (volume); dashboard identity (`dashboard-api/credentials`); DigiLocker link store; pharmacy store (`backend/data/pharmacy_store.json`: inventory, bills, staff list, access list — **not on the ledger**); ai-agent `patient_data/patients.json`. |
 
@@ -223,6 +234,6 @@ Every gateway wraps its contract object so each submit reports its submit and co
 | Clinical AI agent (report check, chat) | Partial | Rule-based, not a model |
 | clinical-decision-support | Missing wiring | Not deployed, not called |
 | Nurse, records-officer, discharge screens; insurance claim API | Unverified | Unchanged code, not exercised in the last pass |
-| Insurance / provider screens | Missing | API only |
+| Insurance / provider screens | Working | Dedicated `/insurance/` Claims Deck with Auth Gate, Role Switcher, Cryptographic Stepper & Digital EOB |
 | Staff creation from the admin page | Broken in Docker | No enrolment tool in the container |
 | Per-patient staff access, per-user Fabric identities, multi-org endorsement | Missing | See `STATUS.md` |

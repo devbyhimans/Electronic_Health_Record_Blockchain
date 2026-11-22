@@ -72,7 +72,11 @@ flowchart TD
 
 ### 3.1 Hyperledger Fabric Ledger & World State (GoLevelDB)
 
-Each Hyperledger Fabric peer node maintains its own copy of the channel ledger (`ehrchannel`), composed of:
+Each Hyperledger Fabric peer node maintains its own copy of the channel ledgers:
+- `ehrchannel`: Clinical, laboratory, and pharmacy consortium transactions across all 3 MSPs.
+- `insurancechannel`: Confidential insurance claims adjudication, co-pay calculation, and settlement strictly between `HospitalMSP` and `ProviderMSP`.
+
+Each channel ledger is composed of:
 1. **The Block Store**: An immutable append-only chain of blocks recording every valid transaction since genesis.
 2. **The World State (State Database)**: An embedded **GoLevelDB** database holding the latest key-value state of smart contract assets.
 
@@ -127,11 +131,17 @@ The state is managed by 13 smart contracts deployed on `ehrchannel`:
   - `status`: `REQUESTED`, `ACKNOWLEDGED`, `ANALYZED`, `APPROVED`.
   - `resultsHash`: Cryptographic SHA-256 hash of laboratory biomarker report.
   - `supervisorSignature`: Verification signature of authorizing supervisor.
-- **Claims Contract (`claimsContract.js`)**:
-  - `claimId`: Insurance reimbursement claim ID (`CLAIM_<claimId>`).
-  - `claimStatus`: `PENDING`, `APPROVED`, `REJECTED`.
-  - `amount`: Claimed reimbursement amount.
-  - `adjudicationLog`: Pointers to audit records.
+- **Claims Contract (`claimsContract.js` on `insurancechannel`)**:
+  - `claimId`: Insurance reimbursement claim ID (`CLAIM:<claimId>`).
+  - `visitId`: Clinical encounter reference (`VISIT:<visitId>`).
+  - `claimStatus`: `SUBMITTED`, `UNDER_AUDIT`, `APPROVED`, `REJECTED`, `PARTIAL_APPROVAL`.
+  - `claimAmount`: Claimed reimbursement amount.
+  - `approvedAmount`: Net approved insurer settlement payout.
+  - `copayAmount`: Patient deductible / co-pay contribution (e.g. 15%).
+  - `claimCID`: Pointer to off-chain Selective Disclosure IPFS Packet (`SelectiveDisclosureClaimPacket`).
+  - `auditedBy` / `auditNotes`: Claims auditor findings on medical necessity.
+  - `processedBy` / `processedAt`: Senior adjudicator identity and timestamp.
+  - `channel`: `insurancechannel`.
 - **FHIR R4 Contract (`fhirContract.js`)**:
   - `recordKey`: Structured standard resource key (`RECORD~<patientIdHash>~<recordId>`).
   - `resourceType`: `Patient`, `Encounter`, `Observation`, `DiagnosticReport`, etc.

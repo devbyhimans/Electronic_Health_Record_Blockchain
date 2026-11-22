@@ -907,7 +907,7 @@ html[data-theme="dark"] .status-pill-badge.critical { color: #fda4af !important;
 .glass-chip, .test-badge, .patient-badge, .hash-chip-link, .inspect-chip { background: var(--obs-softer) !important; border: 1px solid var(--obs-line) !important; color: var(--text-secondary) !important; }
 .hash-chip-link, .digest-cell { font-family: var(--obs-mono) !important; color: var(--obs-accent) !important; }
 .file-dropzone { background: var(--obs-softer) !important; border: 1.5px dashed var(--obs-accent-border) !important; border-radius: 1rem !important; color: var(--text-secondary) !important; }
-.output-panel, .terminal-pre { background: #0b1120 !important; border: 1px solid rgba(255, 255, 255, 0.08) !important; color: #e2e8f0 !important; border-radius: 1rem !important; font-family: var(--obs-mono) !important; }
+.terminal-pre { background: #0b1120 !important; border: 1px solid rgba(255, 255, 255, 0.08) !important; color: #e2e8f0 !important; border-radius: 1rem !important; font-family: var(--obs-mono) !important; }
 .lab-footer, body > footer { color: var(--text-muted) !important; border-color: var(--obs-line) !important; background: transparent !important; }
 .stat-val, .panel-heading, .section-title { color: var(--text-primary) !important; font-family: 'Plus Jakarta Sans', system-ui, sans-serif !important; }
 .stat-desc, .stat-title, .panel-sub, .panel-intro, .section-desc, .brand-sub { color: var(--text-muted) !important; }

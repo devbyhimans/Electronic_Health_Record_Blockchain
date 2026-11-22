@@ -20,8 +20,9 @@ const ORDERER_TLS_CA = process.env.ORDERER_TLS_CA
       'organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/tlscacerts/tls-localhost-7054-ca-orderer.pem'
     );
 
-const CHANNEL   = process.env.FABRIC_CHANNEL  || 'ehrchannel';
-const CHAINCODE = process.env.FABRIC_CHAINCODE || 'ehr';
+const CHANNEL           = process.env.FABRIC_CHANNEL      || 'ehrchannel';
+const INSURANCE_CHANNEL = process.env.INSURANCE_CHANNEL  || 'insurancechannel';
+const CHAINCODE         = process.env.FABRIC_CHAINCODE    || 'ehr';
 
 const pool = {};
 
@@ -58,7 +59,20 @@ async function buildEntry(role, config) {
   });
   const network  = gateway.getNetwork(CHANNEL);
   const contract = network.getContract(CHAINCODE);
-  return { gateway, grpcClient, network, contract };
+
+  let insuranceNetwork = null;
+  let insuranceContract = null;
+  if (config.mspId === 'HospitalMSP' || config.mspId === 'ProviderMSP') {
+    try {
+      insuranceNetwork = gateway.getNetwork(INSURANCE_CHANNEL);
+      insuranceContract = insuranceNetwork.getContract(CHAINCODE);
+      logger.info(`Attached insurancechannel for role ${role}`);
+    } catch (err) {
+      logger.warn(`Could not attach insurancechannel for role ${role}: ${err.message}`);
+    }
+  }
+
+  return { gateway, grpcClient, network, contract, insuranceNetwork, insuranceContract };
 }
 
 async function init() {
@@ -87,6 +101,26 @@ function getContract(role) {
   return entry.instrumented;
 }
 
+function getInsuranceContract(role) {
+  const entry = pool[role];
+  if (!entry) throw new Error(`No active gateway for role '${role}'`);
+  if (!entry.insuranceContract) {
+    if (entry.insuranceNetwork) {
+      entry.insuranceContract = entry.insuranceNetwork.getContract(CHAINCODE);
+    } else {
+      entry.insuranceNetwork = entry.gateway.getNetwork(INSURANCE_CHANNEL);
+      entry.insuranceContract = entry.insuranceNetwork.getContract(CHAINCODE);
+    }
+  }
+  if (!entry.instrumentedInsurance) {
+    entry.instrumentedInsurance = instrumentContract(entry.insuranceContract, {
+      source: 'extorg-api:insurance',
+      org: (PEER_MAP[role] && PEER_MAP[role].mspId) || 'ProviderMSP',
+    });
+  }
+  return entry.instrumentedInsurance;
+}
+
 function getNetwork(role) {
   const entry = pool[role];
   if (!entry) throw new Error(`No active gateway for role '${role}'`);
@@ -112,4 +146,4 @@ async function close() {
   }
 }
 
-module.exports = { init, getContract, getNetwork, reconnect, close };
+module.exports = { init, getContract, getInsuranceContract, getNetwork, reconnect, close };

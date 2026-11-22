@@ -26,8 +26,12 @@ UL='\033[4m'
 PASS=0; FAIL=0; TOTAL=0; TX_COUNT=0
 
 BASE_PATIENT="PAT-TEST"
+CHANNEL="ehrchannel"
 while [[ "$#" -gt 0 ]]; do
-  case $1 in --patient) BASE_PATIENT="$2"; shift ;; esac; shift
+  case $1 in
+    --patient) BASE_PATIENT="$2"; shift ;;
+    --channel) CHANNEL="$2"; shift ;;
+  esac; shift
 done
 PATIENT_ID="${BASE_PATIENT}-$(date +%s)"
 
@@ -43,7 +47,7 @@ export FABRIC_CFG_PATH="${BASE_DIR}/configtx"
 export CORE_PEER_TLS_ENABLED=true
 
 ORDERER_TLS="$ORGANIZATIONS/ordererOrganizations/example.com/orderers/orderer.example.com/tls/tlscacerts/tls-localhost-7054-ca-orderer.pem"
-CHANNEL="ehrchannel"; CC="ehr"; ORDERER="localhost:7050"
+CHANNEL="${CHANNEL:-ehrchannel}"; CC="ehr"; ORDERER="localhost:7050"
 
 P0_HOSP_TLS="$ORGANIZATIONS/peerOrganizations/hospital.example.com/peers/peer0.hospital.example.com/tls/ca.crt"
 P1_HOSP_TLS="$ORGANIZATIONS/peerOrganizations/hospital.example.com/peers/peer1.hospital.example.com/tls/ca.crt"

@@ -11,11 +11,12 @@
 # when the peer is unreachable (offline mode).
 #
 # Usage:
-#   bash ehr_explorer.sh              # auto-sync + full view
-#   bash ehr_explorer.sh --dump       # + save output to file
-#   bash ehr_explorer.sh --state      # only current world state
-#   bash ehr_explorer.sh --blocks     # only block/tx log
-#   bash ehr_explorer.sh --force      # re-fetch ALL blocks from scratch
+#   bash ehr_explorer.sh                         # auto-sync + full view (ehrchannel)
+#   bash ehr_explorer.sh --channel insurancechannel # auto-sync + full view (insurancechannel)
+#   bash ehr_explorer.sh --dump                  # + save output to file
+#   bash ehr_explorer.sh --state                 # only current world state
+#   bash ehr_explorer.sh --blocks                # only block/tx log
+#   bash ehr_explorer.sh --force                 # re-fetch ALL blocks from scratch
 # ============================================================
 
 set -euo pipefail
@@ -36,13 +37,16 @@ DO_FORCE=false
 DO_DUMP=false
 SHOW_BLOCKS=true
 SHOW_STATE=true
+CHANNEL="ehrchannel"
 
-for arg in "$@"; do
-  case $arg in
-    --force)  DO_FORCE=true ;;
-    --dump)   DO_DUMP=true ;;
-    --state)  SHOW_BLOCKS=false; SHOW_STATE=true ;;
-    --blocks) SHOW_BLOCKS=true;  SHOW_STATE=false ;;
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --force)        DO_FORCE=true; shift ;;
+    --dump)         DO_DUMP=true; shift ;;
+    --state)        SHOW_BLOCKS=false; SHOW_STATE=true; shift ;;
+    --blocks)       SHOW_BLOCKS=true;  SHOW_STATE=false; shift ;;
+    --channel|-c)   CHANNEL="$2"; shift 2 ;;
+    *)              shift ;;
   esac
 done
 
@@ -57,12 +61,12 @@ WHITE='\033[1;37m'
 DIM='\033[2m'
 NC='\033[0m'
 
-OUT=ledger_dump
+OUT="ledger_dump/${CHANNEL}"
 mkdir -p "$OUT"
 
 DUMP_FILE=""
 if $DO_DUMP; then
-  DUMP_FILE="$OUT/ehr_explorer_$(date +%Y%m%d_%H%M%S).txt"
+  DUMP_FILE="$OUT/ehr_explorer_${CHANNEL}_$(date +%Y%m%d_%H%M%S).txt"
 fi
 
 _print() {
@@ -81,7 +85,6 @@ export CORE_PEER_TLS_ROOTCERT_FILE=$(pwd)/organizations/peerOrganizations/hospit
 export CORE_PEER_MSPCONFIGPATH=$(pwd)/organizations/peerOrganizations/hospital.example.com/users/hospitaladmin/msp
 
 ORDERER_TLS=$(pwd)/organizations/ordererOrganizations/example.com/orderers/orderer.example.com/tls/tlscacerts/tls-localhost-7054-ca-orderer.pem
-CHANNEL=ehrchannel
 
 # ── Auto-sync: fetch only new blocks ─────────────────────────
 HEIGHT=$(peer channel getinfo -c $CHANNEL 2>/dev/null \
@@ -153,10 +156,10 @@ CHAIN_HEIGHT=$(jq -r '.header.number' "${BLOCK_FILES[-1]}" 2>/dev/null)
 # ── Header banner ─────────────────────────────────────────────
 _print ""
 _print "${BLUE}╔══════════════════════════════════════════════════════════╗${NC}"
-_print "${BLUE}║${WHITE}          EHR Blockchain Explorer — ehrchannel           ${BLUE}║${NC}"
+_print "${BLUE}║${WHITE}          EHR Blockchain Explorer — ${CHANNEL}           ${BLUE}║${NC}"
 _print "${BLUE}╚══════════════════════════════════════════════════════════╝${NC}"
 _print ""
-_print "  ${DIM}Channel   :${NC} ${WHITE}ehrchannel${NC}"
+_print "  ${DIM}Channel   :${NC} ${WHITE}${CHANNEL}${NC}"
 _print "  ${DIM}Blocks    :${NC} ${WHITE}$TOTAL_BLOCKS${NC}  (0 – $CHAIN_HEIGHT)"
 _print "  ${DIM}Txns      :${NC} ${WHITE}$TOTAL_TXS${NC}"
 _print "  ${DIM}Cache dir :${NC} ${WHITE}$OUT/${NC}"
@@ -319,7 +322,7 @@ print_record() {
 
 # ── Peer chaincode query shorthand ───────────────────────────
 cc_query() {
-  peer chaincode query -C "$CHANNEL" -n ehr -c "$1" 2>/dev/null
+  peer chaincode query -C "$CHANNEL" -n ehr -c "$1" 2>/dev/null || true
 }
 
 # ── Current World State ───────────────────────────────────────
@@ -388,6 +391,27 @@ if $SHOW_STATE; then
     done < <(echo "$PATIENTS_JSON" | jq -r '.[].patientId' 2>/dev/null)
     [ "$N_ACCESS" -eq 0 ] && _print "  ${DIM}(none)${NC}"
 
+    # ── CLAIMS (INSURANCE CHANNEL / ADJUDICATIONS) ───────────
+    _print ""
+    _print "  ${CYAN}▶ INSURANCE CLAIMS${NC}"
+    N_CLAIMS=0
+    CLAIM_PIDS=()
+    if [ "$N_PATIENTS" -gt 0 ] 2>/dev/null; then
+      while IFS= read -r pid; do [ -n "$pid" ] && CLAIM_PIDS+=("$pid"); done < <(echo "$PATIENTS_JSON" | jq -r '.[].patientId' 2>/dev/null)
+    fi
+    [[ " ${CLAIM_PIDS[*]:-} " =~ " PAT-001 " ]] || CLAIM_PIDS+=("PAT-001")
+    for pid in "${CLAIM_PIDS[@]}"; do
+      claims=$(cc_query "{\"Args\":[\"ClaimContract:ListClaimsByPatient\",\"$pid\"]}" 2>/dev/null || true)
+      if [ -n "$claims" ] && echo "$claims" | jq -e '. | length > 0' >/dev/null 2>&1; then
+        while IFS= read -r clm; do
+          cid=$(echo "$clm" | jq -r '.claimId // .id // "unknown"' 2>/dev/null)
+          print_record "CLAIM:$cid" "$CYAN" "$clm"
+          N_CLAIMS=$(( N_CLAIMS + 1 ))
+        done < <(echo "$claims" | jq -c '.[]' 2>/dev/null)
+      fi
+    done
+    [ "$N_CLAIMS" -eq 0 ] && _print "  ${DIM}(none)${NC}"
+
   else
     # ── Offline: reconstruct from block write sets ────────────
     _print "${WHITE}  CURRENT WORLD STATE  ${YELLOW}[offline — reconstructed from cached blocks]${NC}"
@@ -395,7 +419,7 @@ if $SHOW_STATE; then
 
     mapfile -t SORTED_KEYS < <(printf '%s\n' "${!STATE_MAP[@]}" | sort)
     PREV_PREFIX=""
-    N_PATIENTS=0; N_VISITS=0; N_EHR=0; N_ACCESS=0
+    N_PATIENTS=0; N_VISITS=0; N_EHR=0; N_ACCESS=0; N_CLAIMS=0
 
     for key in "${SORTED_KEYS[@]}"; do
       PREFIX="${key%%:*}"
@@ -408,6 +432,7 @@ if $SHOW_STATE; then
           VISIT)   _print "  ${CYAN}▶ VISIT RECORDS${NC}" ;;
           EHR)     _print "  ${MAGENTA}▶ EHR DOCUMENTS${NC}" ;;
           ACCESS)  _print "  ${YELLOW}▶ ACCESS CONTROL${NC}" ;;
+          CLAIM)   _print "  ${CYAN}▶ INSURANCE CLAIMS${NC}" ;;
           *)       _print "  ${WHITE}▶ $PREFIX${NC}" ;;
         esac
         PREV_PREFIX="$PREFIX"
@@ -423,6 +448,7 @@ if $SHOW_STATE; then
         VISIT)   COLOR="$CYAN";    N_VISITS=$(( N_VISITS + 1 )) ;;
         EHR)     COLOR="$MAGENTA"; N_EHR=$(( N_EHR + 1 )) ;;
         ACCESS)  COLOR="$YELLOW";  N_ACCESS=$(( N_ACCESS + 1 )) ;;
+        CLAIM)   COLOR="$CYAN";    N_CLAIMS=$(( N_CLAIMS + 1 )) ;;
         *)       COLOR="$WHITE" ;;
       esac
 
@@ -440,6 +466,7 @@ if $SHOW_STATE; then
   _print "  ${CYAN}Visits       :${NC} ${WHITE}${N_VISITS:-0}${NC}"
   _print "  ${MAGENTA}EHR docs     :${NC} ${WHITE}${N_EHR:-0}${NC}"
   _print "  ${YELLOW}Access logs  :${NC} ${WHITE}${N_ACCESS:-0}${NC}"
+  _print "  ${CYAN}Claims       :${NC} ${WHITE}${N_CLAIMS:-0}${NC}"
 fi
 
 # ── Footer ────────────────────────────────────────────────────

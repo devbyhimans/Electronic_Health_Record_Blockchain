@@ -1196,48 +1196,117 @@ body {
 /* ==========================================================================
    Output Console / Terminal
    ========================================================================== */
+/* ==========================================================================
+   Approach 1: Diagnostic Report & AI Decision Dossier
+   ========================================================================== */
+.inspector-panel,
 .output-panel {
-  background: #090e1a;
-  border-color: #1e293b;
-  color: #e2e8f0;
+  background: var(--lab-surface-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--lab-border);
+  color: var(--lab-text);
+  border-radius: var(--radius-xl);
+  padding: 20px 24px;
+  font-family: inherit;
+  transition: all 0.25s ease;
+}
+
+html.dark .inspector-panel,
+html[data-theme='dark'] .inspector-panel,
+html.dark .output-panel,
+html[data-theme='dark'] .output-panel {
+  background: var(--lab-surface-glass);
+  border-color: var(--lab-border);
+  color: var(--lab-text);
+  font-family: inherit;
 }
 
 .output-header-row {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 12px;
-  padding-bottom: 10px;
-  border-bottom: 1px solid #1e293b;
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--lab-border);
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+html.dark .output-header-row,
+html[data-theme='dark'] .output-header-row {
+  border-color: #1e293b;
 }
 
 .output-title-group {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
 }
 
-.terminal-dots {
-  display: flex;
-  gap: 5px;
+.dossier-header-icon {
+  font-size: 1.4rem;
+  line-height: 1;
 }
-
-.terminal-dots .dot {
-  width: 9px;
-  height: 9px;
-  border-radius: 50%;
-}
-
-.terminal-dots .dot.red { background: #ef4444; }
-.terminal-dots .dot.yellow { background: #f59e0b; }
-.terminal-dots .dot.green { background: #10b981; }
 
 .output-title-group h3 {
-  font-size: 0.8rem;
+  font-size: 0.95rem;
+  font-weight: 800;
+  color: var(--lab-text);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.output-actions-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.view-mode-toggle {
+  display: flex;
+  background: var(--lab-surface-soft);
+  border: 1px solid var(--lab-border);
+  border-radius: var(--radius-pill);
+  padding: 3px;
+  gap: 2px;
+}
+
+html.dark .view-mode-toggle,
+html[data-theme='dark'] .view-mode-toggle {
+  background: #0f172a;
+  border-color: #334155;
+}
+
+.view-mode-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  border-radius: var(--radius-pill);
+  border: none;
+  background: transparent;
+  color: var(--lab-text-secondary);
+  font-size: 0.73rem;
   font-weight: 700;
-  color: #94a3b8;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.view-mode-btn:hover {
+  color: var(--lab-text);
+}
+
+.view-mode-btn.active {
+  background: var(--vitalis-teal);
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(13, 148, 136, 0.35);
+}
+
+.view-mode-btn .btn-icon {
+  width: 12px;
+  height: 12px;
 }
 
 .output-actions {
@@ -1246,24 +1315,457 @@ body {
 }
 
 .output-actions .pill-btn {
+  border-color: var(--lab-border);
+  color: var(--lab-text-secondary);
+}
+
+.output-actions .pill-btn:hover {
+  background: var(--lab-surface-soft);
+  color: var(--lab-text);
+}
+
+html.dark .output-actions .pill-btn,
+html[data-theme='dark'] .output-actions .pill-btn {
   border-color: #334155;
   color: #94a3b8;
 }
 
-.output-actions .pill-btn:hover {
+html.dark .output-actions .pill-btn:hover,
+html[data-theme='dark'] .output-actions .pill-btn:hover {
   background: #1e293b;
   color: #f1f5f9;
+}
+
+/* Empty State */
+.dossier-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+  padding: 36px 20px;
+  background: var(--lab-surface-soft);
+  border-radius: var(--radius-lg);
+  border: 1px dashed var(--lab-border);
+}
+
+html.dark .dossier-empty-state,
+html[data-theme='dark'] .dossier-empty-state {
+  background: #0b1325;
+  border-color: #1e293b;
+}
+
+.empty-icon-wrap {
+  font-size: 2.2rem;
+  margin-bottom: 10px;
+  opacity: 0.85;
+}
+
+.dossier-empty-state h4 {
+  font-size: 0.96rem;
+  font-weight: 700;
+  color: var(--lab-text);
+  margin-bottom: 6px;
+}
+
+.dossier-empty-state p {
+  font-size: 0.78rem;
+  color: var(--lab-text-muted);
+  max-width: 480px;
+  line-height: 1.5;
+}
+
+/* Dossier Content Card */
+.dossier-card {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  animation: fadeIn 0.25s ease-out;
+}
+
+/* Dossier Header Bar */
+.dossier-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 14px 16px;
+  background: var(--lab-surface-soft);
+  border: 1px solid var(--lab-border);
+  border-radius: var(--radius-lg);
+  flex-wrap: wrap;
+}
+
+html.dark .dossier-header-bar,
+html[data-theme='dark'] .dossier-header-bar {
+  background: #0f172a;
+  border-color: #1e293b;
+}
+
+.dossier-patient-info {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.dossier-id-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.dossier-result-id {
+  font-size: 1.05rem;
+  font-weight: 800;
+  color: var(--vitalis-teal);
+  letter-spacing: -0.01em;
+}
+
+.dossier-patient-id {
+  font-size: 0.82rem;
+  color: var(--lab-text-secondary);
+}
+
+.dossier-bundle-badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.72rem;
+  font-weight: 700;
+  background: rgba(30, 77, 255, 0.1);
+  color: var(--vitalis-blue);
+  border: 1px solid rgba(30, 77, 255, 0.25);
+}
+
+html.dark .dossier-bundle-badge,
+html[data-theme='dark'] .dossier-bundle-badge {
+  background: rgba(99, 102, 241, 0.18);
+  color: #a5b4fc;
+  border-color: rgba(99, 102, 241, 0.35);
+}
+
+.dossier-timestamp-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.72rem;
+  color: var(--lab-text-muted);
+  flex-wrap: wrap;
+}
+
+/* Dossier Sections */
+.dossier-section {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.dossier-section-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.section-icon {
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.dossier-section-header h4 {
+  font-size: 0.84rem;
+  font-weight: 800;
+  color: var(--lab-text);
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  margin: 0;
+}
+
+.param-count-badge {
+  font-size: 0.68rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: var(--radius-pill);
+  background: rgba(100, 116, 139, 0.15);
+  color: var(--lab-text-muted);
+}
+
+/* Biomarkers Table */
+.biomarkers-table-wrap {
+  border: 1px solid var(--lab-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--lab-surface);
+}
+
+html.dark .biomarkers-table-wrap,
+html[data-theme='dark'] .biomarkers-table-wrap {
+  background: #0b1325;
+  border-color: #1e293b;
+}
+
+.dossier-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.79rem;
+}
+
+.dossier-table th {
+  background: var(--lab-surface-soft);
+  padding: 9px 14px;
+  text-align: left;
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--lab-text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 1px solid var(--lab-border);
+}
+
+html.dark .dossier-table th,
+html[data-theme='dark'] .dossier-table th {
+  background: #0f172a;
+  border-color: #1e293b;
+}
+
+.dossier-table td {
+  padding: 9px 14px;
+  border-bottom: 1px solid var(--lab-border);
+  color: var(--lab-text);
+}
+
+html.dark .dossier-table td,
+html[data-theme='dark'] .dossier-table td {
+  border-color: #1e293b;
+}
+
+.dossier-table tr:last-child td {
+  border-bottom: none;
+}
+
+.biomarker-name {
+  font-weight: 700;
+  color: var(--lab-text);
+}
+
+.biomarker-val-cell {
+  font-weight: 700;
+  font-size: 0.83rem;
+  color: var(--vitalis-teal);
+}
+
+.biomarker-val-cell .unit {
+  font-weight: 500;
+  font-size: 0.72rem;
+  color: var(--lab-text-muted);
+  margin-left: 4px;
+}
+
+.biomarker-ref-cell {
+  font-size: 0.74rem;
+  color: var(--lab-text-muted);
+}
+
+/* AI Section */
+.ai-section {
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.06) 0%, rgba(30, 77, 255, 0.05) 100%);
+  border: 1px solid rgba(13, 148, 136, 0.25);
+  padding: 14px 16px;
+  gap: 12px;
+}
+
+html.dark .ai-section,
+html[data-theme='dark'] .ai-section {
+  background: linear-gradient(135deg, rgba(13, 148, 136, 0.12) 0%, rgba(30, 77, 255, 0.1) 100%);
+  border-color: rgba(45, 212, 191, 0.3);
+}
+
+.ai-box-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.ai-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.ai-sparkle-icon {
+  font-size: 1.2rem;
+}
+
+.ai-box-header h4 {
+  font-size: 0.86rem;
+  font-weight: 800;
+  color: var(--vitalis-teal);
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.ai-sub {
+  font-size: 0.69rem;
+  color: var(--lab-text-muted);
+}
+
+.ai-confidence-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+  font-size: 0.68rem;
+  font-weight: 700;
+}
+
+.ai-confidence-chip .ai-chip-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.ai-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.ai-finding-block {
+  font-size: 0.8rem;
+  line-height: 1.5;
+  color: var(--lab-text);
+}
+
+.ai-finding-block .ai-label {
+  color: var(--lab-text-secondary);
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  display: block;
+  margin-bottom: 2px;
+}
+
+.ai-rec-block {
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(30, 77, 255, 0.08);
+  border-left: 3px solid var(--vitalis-blue);
+  font-size: 0.78rem;
+  color: var(--lab-text);
+}
+
+.ai-disclaimer {
+  font-size: 0.69rem;
+  color: var(--lab-text-muted);
+  font-style: italic;
+}
+
+/* Provenance Bar */
+.dossier-provenance-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 11px 14px;
+  border-radius: var(--radius-md);
+  background: var(--lab-surface-soft);
+  border: 1px solid var(--lab-border);
+  flex-wrap: wrap;
+}
+
+html.dark .dossier-provenance-bar,
+html[data-theme='dark'] .dossier-provenance-bar {
+  background: #0f172a;
+  border-color: #1e293b;
+}
+
+.provenance-seal {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.seal-icon {
+  font-size: 1.15rem;
+}
+
+.seal-text strong {
+  display: block;
+  font-size: 0.74rem;
+  font-weight: 800;
+  color: var(--lab-text);
+}
+
+.seal-text span {
+  font-size: 0.68rem;
+  color: var(--lab-text-muted);
+}
+
+.provenance-chips {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.prov-chip {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.72rem;
+}
+
+.prov-label {
+  color: var(--lab-text-muted);
+  font-weight: 600;
+}
+
+.prov-link {
+  color: var(--vitalis-teal);
+  text-decoration: none;
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-weight: 700;
+  background: rgba(13, 148, 136, 0.1);
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  border: 1px solid rgba(13, 148, 136, 0.25);
+  transition: all 0.2s ease;
+}
+
+.prov-link:hover {
+  background: var(--vitalis-teal);
+  color: #ffffff;
+}
+
+.prov-hash {
+  font-family: 'IBM Plex Mono', 'Consolas', monospace;
+  font-size: 0.7rem;
+  background: rgba(100, 116, 139, 0.12);
+  padding: 2px 7px;
+  border-radius: var(--radius-sm);
+  color: var(--lab-text-secondary);
 }
 
 .terminal-pre {
   font-family: 'IBM Plex Mono', 'Consolas', monospace;
   font-size: 0.78rem;
   line-height: 1.6;
-  max-height: 320px;
+  max-height: 380px;
   overflow-y: auto;
   white-space: pre-wrap;
   word-break: break-word;
   color: #38bdf8;
+  background: #090e1a;
+  padding: 14px 16px;
+  border-radius: var(--radius-md);
+  border: 1px solid #1e293b;
 }
 
 /* ==========================================================================
@@ -1333,4 +1835,374 @@ body {
   font-family: 'IBM Plex Mono', 'Consolas', monospace;
   font-size: 0.75rem;
   word-break: break-all;
+}
+
+/* ==========================================================================
+   Clinical Indication / Diagnostic Bundles (Approach 2)
+   ========================================================================== */
+.bundle-biomarkers-section {
+  background: var(--lab-surface-soft);
+  border: 1px solid var(--lab-border);
+  border-radius: var(--radius-lg);
+  padding: 14px 16px;
+  margin: 4px 0 6px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.25s ease;
+}
+
+.bundle-biomarkers-section.hidden {
+  display: none !important;
+}
+
+.bundle-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding-bottom: 8px;
+  border-bottom: 1px dashed var(--lab-border);
+}
+
+.bundle-title {
+  font-size: 0.92rem;
+  font-weight: 800;
+  color: var(--lab-text);
+  margin: 0;
+  letter-spacing: -0.01em;
+}
+
+.bundle-desc {
+  font-size: 0.73rem;
+  color: var(--lab-text-muted);
+  margin: 2px 0 0;
+  line-height: 1.35;
+}
+
+.biomarker-summary-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: var(--radius-pill);
+  font-size: 0.68rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.biomarker-summary-badge .badge-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: currentColor;
+}
+
+.biomarker-summary-badge.badge-normal {
+  background: rgba(16, 185, 129, 0.15);
+  color: #059669;
+  border: 1px solid rgba(16, 185, 129, 0.3);
+}
+
+.biomarker-summary-badge.badge-high {
+  background: rgba(245, 158, 11, 0.15);
+  color: #d97706;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+}
+
+.biomarker-summary-badge.badge-critical {
+  background: rgba(239, 68, 68, 0.18);
+  color: #dc2626;
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  animation: pulseCritical 1.8s infinite ease-in-out;
+}
+
+@keyframes pulseCritical {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.85; transform: scale(1.02); }
+}
+
+.bundle-inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+}
+
+@media (max-width: 540px) {
+  .bundle-inputs-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.biomarker-card {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding: 8px 10px;
+  border-radius: var(--radius-md);
+  background: var(--lab-surface);
+  border: 1px solid var(--lab-border);
+  transition: all 0.2s ease;
+}
+
+.biomarker-card:hover {
+  border-color: var(--lab-border-hover);
+}
+
+.biomarker-card:focus-within {
+  border-color: var(--vitalis-teal);
+  box-shadow: 0 0 0 2px rgba(13, 148, 136, 0.2);
+}
+
+.biomarker-card.card-critical {
+  border-color: rgba(239, 68, 68, 0.6) !important;
+  background: rgba(239, 68, 68, 0.06) !important;
+}
+
+.biomarker-card.card-high {
+  border-color: rgba(245, 158, 11, 0.6) !important;
+  background: rgba(245, 158, 11, 0.05) !important;
+}
+
+.biomarker-card.card-low {
+  border-color: rgba(59, 130, 246, 0.6) !important;
+  background: rgba(59, 130, 246, 0.05) !important;
+}
+
+.biomarker-card.card-normal {
+  border-color: rgba(16, 185, 129, 0.4) !important;
+  background: rgba(16, 185, 129, 0.04) !important;
+}
+
+.biomarker-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.biomarker-label {
+  font-size: 0.73rem;
+  font-weight: 700;
+  color: var(--lab-text);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.biomarker-pill {
+  font-size: 0.65rem;
+  font-weight: 800;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  letter-spacing: 0.03em;
+  white-space: nowrap;
+  line-height: 1.3;
+}
+
+.biomarker-pill.badge-empty {
+  background: rgba(100, 116, 139, 0.12);
+  color: var(--lab-text-muted);
+}
+
+.biomarker-pill.badge-normal {
+  background: rgba(16, 185, 129, 0.18);
+  color: #059669;
+}
+
+.biomarker-pill.badge-high {
+  background: rgba(245, 158, 11, 0.2);
+  color: #b45309;
+}
+
+.biomarker-pill.badge-low {
+  background: rgba(59, 130, 246, 0.18);
+  color: #1d4ed8;
+}
+
+.biomarker-pill.badge-critical {
+  background: rgba(239, 68, 68, 0.22);
+  color: #dc2626;
+  font-weight: 900;
+}
+
+.biomarker-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.biomarker-input {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 8px !important;
+  font-size: 0.82rem !important;
+  font-weight: 600;
+  border-radius: var(--radius-sm) !important;
+  border: 1px solid var(--lab-border) !important;
+  background: var(--lab-surface-soft) !important;
+}
+
+.biomarker-input:focus {
+  border-color: var(--vitalis-teal) !important;
+  background: var(--lab-surface) !important;
+}
+
+.biomarker-unit {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--lab-text-muted);
+  background: var(--lab-surface-soft);
+  border: 1px solid var(--lab-border);
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.biomarker-ref {
+  font-size: 0.67rem;
+  color: var(--lab-text-muted);
+  line-height: 1.25;
+}
+
+.bundle-critical-alert {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.35);
+  color: #dc2626;
+  font-size: 0.74rem;
+  line-height: 1.4;
+}
+
+.bundle-critical-alert.hidden {
+  display: none !important;
+}
+
+.bundle-critical-alert .alert-icon {
+  font-size: 1rem;
+  line-height: 1;
+}
+
+/* Collapsible JSON Details Accordion */
+.json-payload-accordion {
+  border: 1px solid var(--lab-border);
+  border-radius: var(--radius-md);
+  background: var(--lab-surface-soft);
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.json-payload-summary {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 9px 12px;
+  cursor: pointer;
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: var(--lab-text-secondary);
+  user-select: none;
+  transition: background 0.2s ease;
+}
+
+.json-payload-summary:hover {
+  background: rgba(13, 148, 136, 0.06);
+  color: var(--vitalis-teal);
+}
+
+.summary-left {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.summary-icon {
+  width: 14px;
+  height: 14px;
+}
+
+.summary-tag {
+  font-size: 0.66rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: var(--radius-pill);
+  background: var(--lab-surface);
+  border: 1px solid var(--lab-border);
+  color: var(--lab-text-muted);
+}
+
+.json-payload-body {
+  padding: 10px 12px 12px;
+  border-top: 1px solid var(--lab-border);
+  background: var(--lab-surface);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.raw-hint {
+  font-size: 0.68rem;
+  color: var(--lab-text-muted);
+  font-style: italic;
+}
+
+/* Dark mode adjustments for Approach 2 badges */
+html.dark .biomarker-summary-badge.badge-normal,
+html[data-theme='dark'] .biomarker-summary-badge.badge-normal {
+  background: rgba(16, 185, 129, 0.22);
+  color: #34d399;
+  border-color: rgba(16, 185, 129, 0.45);
+}
+
+html.dark .biomarker-summary-badge.badge-high,
+html[data-theme='dark'] .biomarker-summary-badge.badge-high {
+  background: rgba(245, 158, 11, 0.22);
+  color: #fbbf24;
+  border-color: rgba(245, 158, 11, 0.45);
+}
+
+html.dark .biomarker-summary-badge.badge-critical,
+html[data-theme='dark'] .biomarker-summary-badge.badge-critical {
+  background: rgba(239, 68, 68, 0.26);
+  color: #f87171;
+  border-color: rgba(239, 68, 68, 0.55);
+}
+
+html.dark .biomarker-pill.badge-normal,
+html[data-theme='dark'] .biomarker-pill.badge-normal {
+  background: rgba(16, 185, 129, 0.25);
+  color: #6ee7b7;
+}
+
+html.dark .biomarker-pill.badge-high,
+html[data-theme='dark'] .biomarker-pill.badge-high {
+  background: rgba(245, 158, 11, 0.25);
+  color: #fcd34d;
+}
+
+html.dark .biomarker-pill.badge-low,
+html[data-theme='dark'] .biomarker-pill.badge-low {
+  background: rgba(59, 130, 246, 0.25);
+  color: #93c5fd;
+}
+
+html.dark .biomarker-pill.badge-critical,
+html[data-theme='dark'] .biomarker-pill.badge-critical {
+  background: rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+html.dark .bundle-critical-alert,
+html[data-theme='dark'] .bundle-critical-alert {
+  background: rgba(239, 68, 68, 0.16);
+  border-color: rgba(239, 68, 68, 0.45);
+  color: #fca5a5;
 }

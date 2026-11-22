@@ -30,6 +30,7 @@ SCRIPT_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 CHANNEL_NAME="ehrchannel"
 ORGS_TO_JOIN="1,2,3,4,5"
+ORGS_EXPLICIT=false
 DELAY=3
 MAX_RETRY=5
 VERBOSE=false
@@ -43,8 +44,8 @@ usage() {
   echo "Usage: $0 [OPTIONS]"
   echo ""
   echo "Options:"
-  echo "  --channel   Channel name (default: ehrchannel)"
-  echo "  --orgs      Comma-separated org numbers (default: 1,2,3,4,5)"
+  echo "  --channel   Channel name (default: ehrchannel, e.g. ehrchannel, insurancechannel)"
+  echo "  --orgs      Comma-separated org numbers (default: 1,2,3,4,5 for ehrchannel, 1,3,4,5 for insurancechannel)"
   echo "              1=Hospital peer0 (Auth)   :7051"
   echo "              2=Diagnostics (Lab)        :8051"
   echo "              3=Provider (Insurance)     :11051"
@@ -60,7 +61,7 @@ usage() {
 while [[ "$#" -gt 0 ]]; do
   case $1 in
     --channel)  CHANNEL_NAME="$2"; shift ;;
-    --orgs)     ORGS_TO_JOIN="$2"; shift ;;
+    --orgs)     ORGS_TO_JOIN="$2"; ORGS_EXPLICIT=true; shift ;;
     --delay)    DELAY="$2";        shift ;;
     --retry)    MAX_RETRY="$2";    shift ;;
     --verbose)  VERBOSE=true ;;
@@ -72,6 +73,11 @@ while [[ "$#" -gt 0 ]]; do
   esac
   shift
 done
+
+# If channel is insurancechannel and orgs not explicitly specified, exclude Diagnostics (org 2)
+if [ "$ORGS_EXPLICIT" = false ] && { [ "$CHANNEL_NAME" = "insurancechannel" ] || [ "$CHANNEL_NAME" = "InsuranceChannel" ]; }; then
+  ORGS_TO_JOIN="1,3,4,5"
+fi
 
 # ============================================================
 # PATHS
@@ -124,9 +130,14 @@ createChannelGenesisBlock() {
   infoln "Generating channel genesis block: ${CHANNEL_NAME}.block"
   export FABRIC_CFG_PATH=$CONFIGTX_PATH
 
+  local PROFILE="EHRChannel"
+  if [ "$CHANNEL_NAME" = "insurancechannel" ] || [ "$CHANNEL_NAME" = "InsuranceChannel" ]; then
+    PROFILE="InsuranceChannel"
+  fi
+
   set -x
   configtxgen \
-    -profile EHRChannel \
+    -profile $PROFILE \
     -outputBlock ./channel-artifacts/${CHANNEL_NAME}.block \
     -channelID $CHANNEL_NAME
   res=$?

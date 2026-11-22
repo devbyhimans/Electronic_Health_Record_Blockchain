@@ -262,7 +262,18 @@ async function getLabResultsByPatient(patientId, options = {}) {
   if (!patientId) {
     throw new Error('patientId is required');
   }
-  return evaluateTransaction(options.peerName, 'GetLabResultsByPatient', [patientId]);
+  try {
+    return await evaluateTransaction(options.peerName, 'GetLabResultsByPatient', [patientId]);
+  } catch (error) {
+    if (error && error.message && error.message.includes('ExecuteQuery')) {
+      const all = await getAllLabResults(options);
+      const list = Array.isArray(all.result)
+        ? all.result.filter((r) => r && r.patientId === patientId)
+        : [];
+      return { peer: all.peer, result: list };
+    }
+    throw error;
+  }
 }
 
 async function createLabResult(input, options = {}) {

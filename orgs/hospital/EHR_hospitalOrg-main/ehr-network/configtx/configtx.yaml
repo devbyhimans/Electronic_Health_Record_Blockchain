@@ -176,3 +176,20 @@ Profiles:
         - *Provider
       Capabilities:
         <<: *ApplicationCapabilities
+
+  InsuranceChannel:
+    Consortium: EHRConsortium
+    <<: *ChannelDefaults
+    Orderer:
+      <<: *OrdererDefaults
+      Organizations:
+        - *OrdererOrg
+      Capabilities:
+        <<: *OrdererCapabilities
+    Application:
+      <<: *ApplicationDefaults
+      Organizations:
+        - *Hospital
+        - *Provider
+      Capabilities:
+        <<: *ApplicationCapabilities
